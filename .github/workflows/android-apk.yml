@@ -47,7 +47,6 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      # Android SDK manuell & korrekt in PATH eintragen
       - name: Install Android SDK (manual)
         shell: bash
         run: |
@@ -59,7 +58,7 @@ jobs:
           rm -f cmdtools.zip
           mv cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 
-          # PATH für alle folgenden Steps
+          # PATH für alle folgenden Steps persistieren
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
