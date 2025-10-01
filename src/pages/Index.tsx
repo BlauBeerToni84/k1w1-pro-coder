@@ -4,25 +4,26 @@ import { ChatPanel } from "@/components/ChatPanel";
 import { CodeEditor } from "@/components/CodeEditor";
 import { PreviewPanel } from "@/components/PreviewPanel";
 import { SettingsDialog } from "@/components/SettingsDialog";
+import { AppConfigDialog } from "@/components/AppConfigDialog";
+import { BuildConsole } from "@/components/BuildConsole";
+import { BuildMenu } from "@/components/BuildMenu";
 import { ResizableLayout } from "@/components/ResizableLayout";
 import { Button } from "@/components/ui/button";
-import { Code, Eye, Play, Loader2 } from "lucide-react";
+import { Code, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [appConfigOpen, setAppConfigOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"preview" | "code">("preview");
+  const [buildConsoleOpen, setBuildConsoleOpen] = useState(false);
+  const [currentBuildType, setCurrentBuildType] = useState<"web" | "android" | "ios" | null>(null);
   const [isBuilding, setIsBuilding] = useState(false);
   const { toast } = useToast();
 
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyboard = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + B für Build
-      if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
-        e.preventDefault();
-        handleBuild();
-      }
       // Ctrl/Cmd + E für Preview Toggle
       if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
@@ -39,20 +40,26 @@ const Index = () => {
     return () => window.removeEventListener('keydown', handleKeyboard);
   }, []);
 
-  const handleBuild = () => {
+  const handleBuild = (type: "web" | "android" | "ios") => {
+    setCurrentBuildType(type);
+    setBuildConsoleOpen(true);
     setIsBuilding(true);
+
+    const typeNames = {
+      web: "Web-App",
+      android: "Android APK",
+      ios: "iOS App"
+    };
+
     toast({
-      title: "Build gestartet...",
-      description: "Deine App wird kompiliert",
+      title: `${typeNames[type]} Build gestartet`,
+      description: "Öffne die Build-Konsole für Details",
     });
 
+    // Simulate build completion
     setTimeout(() => {
       setIsBuilding(false);
-      toast({
-        title: "✅ Build erfolgreich!",
-        description: "Deine App ist bereit zum Deployen",
-      });
-    }, 2500);
+    }, 10000);
   };
 
   return (
@@ -96,24 +103,11 @@ const Index = () => {
                 </Button>
               </div>
 
-              <Button 
-                className="bg-primary hover:bg-primary/90 shadow-neon transition-all duration-300 hover:scale-105 disabled:opacity-50"
-                onClick={handleBuild}
-                disabled={isBuilding}
-              >
-                {isBuilding ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Building...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-4 h-4 mr-2" />
-                    Build
-                    <kbd className="ml-2 px-1.5 py-0.5 text-xs rounded bg-primary-foreground/20">⌘B</kbd>
-                  </>
-                )}
-              </Button>
+              <BuildMenu
+                onBuild={handleBuild}
+                onConfigClick={() => setAppConfigOpen(true)}
+                isBuilding={isBuilding}
+              />
             </div>
 
             {/* Content */}
@@ -125,6 +119,12 @@ const Index = () => {
       />
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <AppConfigDialog open={appConfigOpen} onOpenChange={setAppConfigOpen} />
+      <BuildConsole 
+        isOpen={buildConsoleOpen} 
+        onClose={() => setBuildConsoleOpen(false)}
+        buildType={currentBuildType}
+      />
     </div>
   );
 };

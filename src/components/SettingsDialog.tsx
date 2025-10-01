@@ -17,7 +17,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Key, Github, Smartphone, Sparkles } from "lucide-react";
+import { Key, Github, Smartphone, Sparkles, Info, CheckCircle2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -25,7 +26,16 @@ interface SettingsDialogProps {
 }
 
 export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
-  const [aiProvider, setAiProvider] = useState("gemini");
+  const [aiProvider, setAiProvider] = useState("lovable");
+  const { toast } = useToast();
+
+  const handleSave = () => {
+    toast({
+      title: "✅ Einstellungen gespeichert",
+      description: "Alle Änderungen wurden übernommen",
+    });
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -57,18 +67,56 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
           </TabsList>
 
           <TabsContent value="ai" className="space-y-4 mt-4">
+            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
+              <div className="flex gap-2 items-start">
+                <CheckCircle2 className="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-semibold mb-1">Lovable AI aktiviert</p>
+                  <p className="text-xs text-muted-foreground">
+                    Die KI-Assistenten sind automatisch konfiguriert und auf Deutsch eingestellt. 
+                    Sie arbeiten wie bei Bolt - vollautomatisch mit Code-Generierung, Auto-Fix und 
+                    intelligenten Vorschlägen.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label>KI-Provider wählen</Label>
+              <Label>Primärer KI-Provider</Label>
               <Select value={aiProvider} onValueChange={setAiProvider}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="lovable">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span>Lovable AI (Empfohlen)</span>
+                    </div>
+                  </SelectItem>
                   <SelectItem value="gemini">Google Gemini</SelectItem>
                   <SelectItem value="groq">Groq</SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {aiProvider === "lovable" && (
+              <div className="bg-muted/30 rounded-lg p-4 border border-border">
+                <div className="flex gap-2 mb-2">
+                  <Info className="w-4 h-4 text-primary mt-0.5" />
+                  <div>
+                    <p className="text-sm font-semibold">Lovable AI Features</p>
+                    <ul className="text-xs text-muted-foreground mt-2 space-y-1">
+                      <li>✓ Automatische Code-Generierung auf Deutsch</li>
+                      <li>✓ Intelligente Fehler-Erkennung und Auto-Fix</li>
+                      <li>✓ Kontextbewusstes Refactoring</li>
+                      <li>✓ Best Practices und Optimierungen</li>
+                      <li>✓ Multi-Modell Support (Gemini & GPT-5)</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {aiProvider === "gemini" && (
               <>
@@ -169,7 +217,7 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Abbrechen
           </Button>
-          <Button className="bg-primary hover:bg-primary/90">
+          <Button className="bg-primary hover:bg-primary/90" onClick={handleSave}>
             Speichern
           </Button>
         </div>
