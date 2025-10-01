@@ -29,12 +29,14 @@ jobs:
           cache: "npm"
 
       - name: Install deps (ci with fallback)
+        shell: bash
         run: |
           npm config set fund false
           npm config set audit false
           (npm ci) || npm i
 
       - name: Build web assets
+        shell: bash
         env:
           CI: "false"
         run: npm run build --if-present
@@ -45,6 +47,7 @@ jobs:
           distribution: temurin
           java-version: "17"
 
+      # Android SDK manuell & korrekt in PATH eintragen
       - name: Install Android SDK (manual)
         shell: bash
         run: |
@@ -54,10 +57,9 @@ jobs:
           curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o cmdtools.zip
           unzip -q cmdtools.zip
           rm -f cmdtools.zip
-          # Entpackt nach: $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools
           mv cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
 
-          # PATH sowohl für diesen Step als auch nachfolgende Steps
+          # PATH für alle folgenden Steps
           echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
           echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
           export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
@@ -66,15 +68,18 @@ jobs:
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
 
       - name: Ensure Capacitor Android project & sync
+        shell: bash
         run: |
           npm i -D @capacitor/cli
           npm i @capacitor/core
           npx cap sync android
 
       - name: Write local.properties (SDK path)
+        shell: bash
         run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
 
       - name: Assemble release APK
+        shell: bash
         working-directory: android
         run: |
           chmod +x ./gradlew
