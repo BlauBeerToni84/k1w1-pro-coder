@@ -1,0 +1,8 @@
+- pipeline: k1w1-pro-p
+  name: K1W1 pro P
+  refs:
+  - refs/heads/main
+  events:
+  - type: WEBHOOK
+  fail_on_prepare_env_warning: true
+  arch: ARM64
