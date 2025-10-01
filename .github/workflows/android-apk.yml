@@ -40,12 +40,14 @@ jobs:
           distribution: temurin
           java-version: "17"
 
-      - name: Setup Android SDK
+      - name: Setup Android SDK (new inputs)
         uses: android-actions/setup-android@v3
         with:
-          api-level: 35
-          build-tools: "34.0.0"
-          components: platform-tools
+          accept-android-sdk-licenses: true
+          packages: |
+            platform-tools
+            platforms;android-35
+            build-tools;34.0.0
 
       - name: Ensure Capacitor Android project & sync
         run: |
@@ -54,7 +56,7 @@ jobs:
           npx cap sync android
 
       - name: Write local.properties (SDK path)
-        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+        run: echo "sdk.dir=${ANDROID_SDK_ROOT:-$ANDROID_HOME}" > android/local.properties
 
       - name: Assemble release APK
         working-directory: android
