@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - "android//*"
-      - "src/*)"
-      - "public/*"
+      - "android/**"
+      - "src/**"
+      - "public/**"
       - "package.json"
       - "package-lock.json"
       - "vite.config.*"
@@ -15,4 +15,69 @@ jobs:
   build:
     runs-on: ubuntu-22.04
     env:
-      ANDROID_SD
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+      GRADLE_OPTS: "-Dorg.gradle.jvmargs='-Xmx3g -XX:MaxMetaspaceSize=512m'"
+      ORG_GRADLE_WORKERS_MAX: 2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install deps (ci with fallback)
+        run: |
+          npm config set fund false
+          npm config set audit false
+          (npm ci) || npm i
+
+      - name: Build web assets
+        env:
+          CI: "false"
+        run: npm run build --if-present
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Stabil & versionssicher: SDK manuell holen
+      - name: Install Android SDK (manual)
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          cd "$ANDROID_SDK_ROOT/cmdline-tools"
+          curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o cmdtools.zip
+          mkdir -p latest
+          unzip -q cmdtools.zip -d latest
+          rm -f cmdtools.zip
+          export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/platform-tools:$PATH"
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;34.0.0"
+
+      - name: Ensure Capacitor Android project & sync
+        run: |
+          npm i -D @capacitor/cli
+          npm i @capacitor/core
+          npx cap sync android
+
+      - name: Write local.properties (SDK path)
+        run: echo "sdk.dir=$ANDROID_SDK_ROOT" > android/local.properties
+
+      - name: Assemble release APK
+        working-directory: android
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon assembleRelease
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-dist
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
