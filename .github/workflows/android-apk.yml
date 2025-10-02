@@ -53,7 +53,7 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
-      - name: Install Android SDK (manual)
+      - name: Install Android SDK (manual, pinned)
         shell: bash
         run: |
           set -euo pipefail
