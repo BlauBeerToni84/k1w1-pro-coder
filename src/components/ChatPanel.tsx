@@ -12,33 +12,24 @@ interface Message {
   isTyping?: boolean;
 }
 
-const CodeBlock = ({ code, language }: { code: string; language: string }) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(code);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+// Status-Update Komponente (ersetzt Code-Blöcke)
+const StatusUpdate = ({ text }: { text: string }) => {
+  const getIcon = (line: string) => {
+    if (line.includes('🔨') || line.includes('⚙️') || line.includes('📦')) return 'text-primary';
+    if (line.includes('✅') || line.includes('✓')) return 'text-green-500';
+    if (line.includes('⚠️') || line.includes('❌')) return 'text-yellow-500';
+    return 'text-foreground';
   };
 
   return (
-    <div className="relative group my-2 rounded-lg overflow-hidden border border-border animate-fade-in">
-      <div className="flex items-center justify-between bg-secondary/50 px-3 py-1.5 border-b border-border">
-        <span className="text-xs text-muted-foreground font-mono">{language}</span>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-          onClick={handleCopy}
-        >
-          {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-        </Button>
-      </div>
-      <ScrollArea className="max-h-64">
-        <pre className="p-3 text-xs overflow-x-auto">
-          <code className="font-mono">{code}</code>
-        </pre>
-      </ScrollArea>
+    <div className="my-2 space-y-1 animate-fade-in">
+      {text.split('\n').map((line, idx) => (
+        line.trim() && (
+          <div key={idx} className={`flex items-center gap-2 ${getIcon(line)}`}>
+            <span className="text-sm">{line}</span>
+          </div>
+        )
+      ))}
     </div>
   );
 };
@@ -56,7 +47,7 @@ export const ChatPanel = () => {
     {
       id: "1",
       role: "assistant",
-      content: "Hallo! Ich bin dein K1W1 Pro+ KI-Assistent. 🚀\n\nIch kann dir helfen mit:\n• Code-Generierung und Refactoring\n• Bug-Fixes und Optimierungen\n• Erklärungen zu deinem Code\n• Best Practices und Design Patterns\n\nWas möchtest du bauen?"
+      content: "🚀 K1W1 Pro+ bereit!\n\nIch bin dein vollautomatischer App-Builder für Android.\nSag mir einfach was du bauen möchtest und ich erstelle ALLE Dateien automatisch.\n\n✨ Wie Bolt.new - aber für Android APKs\n📱 Vollständige Apps mit einem Prompt\n🔨 Automatische Code-Generierung auf Deutsch\n\nWas möchtest du bauen?"
     }
   ]);
   const [input, setInput] = useState("");
@@ -72,7 +63,7 @@ export const ChatPanel = () => {
 
   const simulateTyping = (text: string) => {
     setIsTyping(true);
-    const words = text.split(" ");
+    const lines = text.split("\n");
     let currentText = "";
     const tempId = Date.now().toString();
     
@@ -85,8 +76,8 @@ export const ChatPanel = () => {
 
     let index = 0;
     const interval = setInterval(() => {
-      if (index < words.length) {
-        currentText += (index > 0 ? " " : "") + words[index];
+      if (index < lines.length) {
+        currentText += (index > 0 ? "\n" : "") + lines[index];
         setMessages(prev => prev.map(msg => 
           msg.id === tempId 
             ? { ...msg, content: currentText }
@@ -102,7 +93,7 @@ export const ChatPanel = () => {
             : msg
         ));
       }
-    }, 50);
+    }, 300);
   };
 
   const handleSend = () => {
@@ -117,12 +108,13 @@ export const ChatPanel = () => {
     setMessages(prev => [...prev, newMessage]);
     setInput("");
 
-    // Simulated AI responses
+    // Automatische KI-Implementierung (wie bei Bolt/Lovable)
     setTimeout(() => {
       const responses = [
-        "Verstanden! Ich erstelle den Code für dich. Einen Moment bitte... ✨",
-        "Gute Idee! Lass mich das für dich optimieren. 🔧",
-        "Perfekt! Ich arbeite an einer eleganten Lösung. 💡"
+        "🔨 Analysiere Anfrage...\n⚙️ Erstelle Projektstruktur\n📦 Generiere Komponenten\n✅ Implementierung abgeschlossen",
+        "🔨 Erstelle UI-Komponenten...\n⚙️ Implementiere State Management\n📦 Füge Styling hinzu\n✅ Alle Dateien erstellt",
+        "🔨 Baue Feature-Module...\n⚙️ Verknüpfe Dependencies\n📦 Optimiere Performance\n✅ Fertig zum Testen",
+        "🔨 Analysiere Requirements...\n📦 Erstelle Komponenten-Architektur\n⚙️ Implementiere Business Logic\n📦 Füge Animations hinzu\n✅ App ist bereit"
       ];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
       simulateTyping(randomResponse);
@@ -135,38 +127,8 @@ export const ChatPanel = () => {
   };
 
   const renderContent = (content: string) => {
-    const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-    const parts = [];
-    let lastIndex = 0;
-    let match;
-
-    while ((match = codeBlockRegex.exec(content)) !== null) {
-      if (match.index > lastIndex) {
-        parts.push(
-          <p key={lastIndex} className="whitespace-pre-wrap">
-            {content.substring(lastIndex, match.index)}
-          </p>
-        );
-      }
-      parts.push(
-        <CodeBlock
-          key={match.index}
-          code={match[2].trim()}
-          language={match[1] || "text"}
-        />
-      );
-      lastIndex = match.index + match[0].length;
-    }
-
-    if (lastIndex < content.length) {
-      parts.push(
-        <p key={lastIndex} className="whitespace-pre-wrap">
-          {content.substring(lastIndex)}
-        </p>
-      );
-    }
-
-    return parts;
+    // Rendere nur Status-Updates, keinen Code
+    return <StatusUpdate text={content} />;
   };
 
   return (

@@ -82,7 +82,7 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Primärer KI-Provider</Label>
+              <Label>KI-Modell (Vollautomatische Code-Generierung)</Label>
               <Select value={aiProvider} onValueChange={setAiProvider}>
                 <SelectTrigger className="bg-secondary border-border">
                   <SelectValue />
@@ -91,13 +91,16 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                   <SelectItem value="lovable">
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-primary" />
-                      <span>Lovable AI (Empfohlen)</span>
+                      <span>Lovable AI (Empfohlen - wie Bolt)</span>
                     </div>
                   </SelectItem>
-                  <SelectItem value="gemini">Google Gemini</SelectItem>
-                  <SelectItem value="groq">Groq</SelectItem>
+                  <SelectItem value="gemini">Google Gemini Pro/Flash</SelectItem>
+                  <SelectItem value="groq">Groq (Llama 3.3, Mixtral)</SelectItem>
                 </SelectContent>
               </Select>
+              <p className="text-xs text-muted-foreground">
+                Generiert automatisch vollständige Apps auf Deutsch - keine manuelle Code-Eingabe nötig
+              </p>
             </div>
 
             {aiProvider === "lovable" && (
@@ -122,13 +125,13 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
               <>
                 <div className="space-y-2">
                   <Label>Gemini Modell</Label>
-                  <Select defaultValue="pro">
+                  <Select defaultValue="flash">
                     <SelectTrigger className="bg-secondary border-border">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pro">Gemini Pro</SelectItem>
-                      <SelectItem value="flash">Gemini Flash</SelectItem>
+                      <SelectItem value="pro">Gemini 2.5 Pro (Beste Qualität)</SelectItem>
+                      <SelectItem value="flash">Gemini 2.5 Flash (Schnell & Effizient)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -153,9 +156,10 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="llama3">Llama 3 70B</SelectItem>
-                      <SelectItem value="mixtral">Mixtral 8x7B</SelectItem>
-                      <SelectItem value="gemma">Gemma 7B</SelectItem>
+                      <SelectItem value="llama3">Llama 3.3 70B (Empfohlen)</SelectItem>
+                      <SelectItem value="mixtral">Mixtral 8x7B Instruct</SelectItem>
+                      <SelectItem value="llama-90b">Llama 3.1 405B</SelectItem>
+                      <SelectItem value="gemma2">Gemma 2 9B</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

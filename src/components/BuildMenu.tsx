@@ -46,35 +46,13 @@ export const BuildMenu = ({ onBuild, onConfigClick, isBuilding }: BuildMenuProps
           <DropdownMenuSeparator />
           
           <DropdownMenuItem 
-            onClick={() => onBuild("web")}
-            className="gap-2 cursor-pointer hover:bg-secondary focus:bg-secondary"
-          >
-            <Globe className="w-4 h-4 text-primary" />
-            <div className="flex flex-col">
-              <span className="font-medium">Web-Build</span>
-              <span className="text-xs text-muted-foreground">Für Browser-Deployment</span>
-            </div>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem 
             onClick={() => onBuild("android")}
             className="gap-2 cursor-pointer hover:bg-secondary focus:bg-secondary"
           >
             <Smartphone className="w-4 h-4 text-green-500" />
             <div className="flex flex-col">
               <span className="font-medium">Android APK</span>
-              <span className="text-xs text-muted-foreground">Für Android-Geräte</span>
-            </div>
-          </DropdownMenuItem>
-
-          <DropdownMenuItem 
-            onClick={() => onBuild("ios")}
-            className="gap-2 cursor-pointer hover:bg-secondary focus:bg-secondary"
-          >
-            <Monitor className="w-4 h-4 text-blue-500" />
-            <div className="flex flex-col">
-              <span className="font-medium">iOS App</span>
-              <span className="text-xs text-muted-foreground">Für iPhone/iPad</span>
+              <span className="text-xs text-muted-foreground">Fertige APK für Android-Geräte</span>
             </div>
           </DropdownMenuItem>
 
