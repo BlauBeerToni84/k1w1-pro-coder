@@ -23,7 +23,6 @@ jobs:
       ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
       GRADLE_USER_HOME: ${{ runner.temp }}/gradle
       ORG_GRADLE_WORKERS_MAX: 2
-      # als ein einzelner, einfach zu parsender String:
       GRADLE_OPTS: '-Dorg.gradle.jvmargs="-Xmx3g -XX:MaxMetaspaceSize=512m -Dfile.encoding=UTF-8"'
 
     steps:
