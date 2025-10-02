@@ -61,69 +61,133 @@ export const ChatPanel = () => {
     }
   }, [messages]);
 
-  const simulateTyping = (text: string) => {
-    setIsTyping(true);
-    const lines = text.split("\n");
-    let currentText = "";
-    const tempId = Date.now().toString();
-    
-    setMessages(prev => [...prev, {
-      id: tempId,
-      role: "assistant",
-      content: "",
-      isTyping: true
-    }]);
+  // Streaming von Lovable AI (Edge Function) – nur Status-Updates auf Deutsch
+  const CHAT_URL = "/functions/v1/chat";
 
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index < lines.length) {
-        currentText += (index > 0 ? "\n" : "") + lines[index];
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempId 
-            ? { ...msg, content: currentText }
-            : msg
-        ));
-        index++;
-      } else {
-        clearInterval(interval);
-        setIsTyping(false);
-        setMessages(prev => prev.map(msg => 
-          msg.id === tempId 
-            ? { ...msg, isTyping: false }
-            : msg
-        ));
+  const streamChat = async ({
+    messages,
+    onDelta,
+    onDone,
+  }: {
+    messages: { role: "user" | "assistant"; content: string }[];
+    onDelta: (deltaText: string) => void;
+    onDone: () => void;
+  }) => {
+    const resp = await fetch(CHAT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+    });
+
+    if (!resp.ok || !resp.body) {
+      const t = await resp.text().catch(() => "");
+      throw new Error(t || `Stream konnte nicht gestartet werden (${resp.status})`);
+    }
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+    let textBuffer = "";
+    let streamDone = false;
+
+    while (!streamDone) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      textBuffer += decoder.decode(value, { stream: true });
+
+      let newlineIndex: number;
+      while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+        let line = textBuffer.slice(0, newlineIndex);
+        textBuffer = textBuffer.slice(newlineIndex + 1);
+
+        if (line.endsWith("\r")) line = line.slice(0, -1);
+        if (line.startsWith(":") || line.trim() === "") continue;
+        if (!line.startsWith("data: ")) continue;
+
+        const jsonStr = line.slice(6).trim();
+        if (jsonStr === "[DONE]") { streamDone = true; break; }
+
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) onDelta(content);
+        } catch {
+          textBuffer = line + "\n" + textBuffer;
+          break;
+        }
       }
-    }, 300);
+    }
+
+    // Rest flush
+    if (textBuffer.trim()) {
+      for (let raw of textBuffer.split("\n")) {
+        if (!raw) continue;
+        if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+        if (raw.startsWith(":") || raw.trim() === "") continue;
+        if (!raw.startsWith("data: ")) continue;
+        const jsonStr = raw.slice(6).trim();
+        if (jsonStr === "[DONE]") continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+          if (content) onDelta(content);
+        } catch { /* ignore */ }
+      }
+    }
+
+    onDone();
+  };
+
+  const streamAssistant = async (userText: string) => {
+    if (!userText.trim()) return;
+
+    const userMsg: Message = { id: `${Date.now()}-u`, role: "user", content: userText };
+    const assistantId = `${Date.now()}-a`;
+
+    // Nutzer- und Platzhalter-Assistenten-Nachricht einfügen
+    setMessages(prev => [
+      ...prev,
+      userMsg,
+      { id: assistantId, role: "assistant", content: "", isTyping: true }
+    ]);
+    setIsTyping(true);
+
+    const history = [...messages, userMsg].map(m => ({ role: m.role, content: m.content }));
+
+    try {
+      await streamChat({
+        messages: history,
+        onDelta: (chunk) => {
+          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, content: (m.content || "") + chunk } : m));
+        },
+        onDone: () => {
+          setIsTyping(false);
+          setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, isTyping: false } : m));
+        },
+      });
+    } catch (e: any) {
+      console.error(e);
+      setIsTyping(false);
+      setMessages(prev => prev.map(m => m.id === assistantId ? { ...m, isTyping: false } : m));
+      toast({
+        title: "KI nicht verfügbar",
+        description: e?.message || "Bitte später erneut versuchen.",
+      });
+    }
   };
 
   const handleSend = () => {
     if (!input.trim() || isTyping) return;
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input
-    };
-
-    setMessages(prev => [...prev, newMessage]);
+    const toSend = input;
     setInput("");
-
-    // Automatische KI-Implementierung (wie bei Bolt/Lovable)
-    setTimeout(() => {
-      const responses = [
-        "🔨 Analysiere Anfrage...\n⚙️ Erstelle Projektstruktur\n📦 Generiere Komponenten\n✅ Implementierung abgeschlossen",
-        "🔨 Erstelle UI-Komponenten...\n⚙️ Implementiere State Management\n📦 Füge Styling hinzu\n✅ Alle Dateien erstellt",
-        "🔨 Baue Feature-Module...\n⚙️ Verknüpfe Dependencies\n📦 Optimiere Performance\n✅ Fertig zum Testen",
-        "🔨 Analysiere Requirements...\n📦 Erstelle Komponenten-Architektur\n⚙️ Implementiere Business Logic\n📦 Füge Animations hinzu\n✅ App ist bereit"
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      simulateTyping(randomResponse);
-    }, 500);
 
     toast({
       title: "Nachricht gesendet",
       description: "Die KI arbeitet an deiner Anfrage...",
     });
+
+    // Starte Streaming-Antwort der KI (nur Status-Updates)
+    streamAssistant(toSend);
   };
 
   const renderContent = (content: string) => {
