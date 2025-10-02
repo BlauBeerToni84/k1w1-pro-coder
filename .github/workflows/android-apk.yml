@@ -58,7 +58,6 @@ jobs:
           curl -fsSL https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip -o cmdtools.zip
           unzip -q cmdtools.zip
           rm -f cmdtools.zip
-          # Die Zip enthält ./cmdline-tools; an den erwarteten Ort verschieben:
           mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
           mv ./cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
           # PATH für ALLE folgenden Steps persistieren:
@@ -93,7 +92,7 @@ jobs:
       - name: Assemble release APK
         shell: bash
         working-directory: android
-        run: ./gradlew --no-daemon --stacktrace --warning-mode all assembleRelease
+        run: ./gradlew --no-daemon --stacktrace --warning-mode=all assembleRelease
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
