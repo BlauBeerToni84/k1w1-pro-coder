@@ -14,7 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      projects: {
+        Row: {
+          apk_url: string | null
+          created_at: string
+          description: string | null
+          files: Json | null
+          id: string
+          name: string
+          progress: number | null
+          prompt: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          apk_url?: string | null
+          created_at?: string
+          description?: string | null
+          files?: Json | null
+          id?: string
+          name: string
+          progress?: number | null
+          prompt: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          apk_url?: string | null
+          created_at?: string
+          description?: string | null
+          files?: Json | null
+          id?: string
+          name?: string
+          progress?: number | null
+          prompt?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
