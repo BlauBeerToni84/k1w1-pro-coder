@@ -1,79 +1,84 @@
 name: tests
-on: [push, pull_request]
 
-# Verhindert doppelte Builds pro Branch (bricht ältere ab)
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    name: ci
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: true
+      NODE_VERSION: '22'
+      PORT: '8080'
+      ELECTRON_DISABLE_GPU: '1'
+      DBUS_SESSION_BUS_ADDRESS: '/dev/null'
+      NO_AT_BRIDGE: '1'
+      TERM: 'xterm'
+      CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
+
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
-          cache: 'npm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
 
-      # Buddy UT CLI robust installieren (nicht-fatal) + in PATH
-      - name: Install Buddy UT CLI (non-fatal)
+      - name: Install system deps (xvfb, lsof)
         run: |
-          set -e
-          if ! command -v bdy >/dev/null 2>&1; then
-            curl -fsSL https://es.buddy.works/bdy/install.sh | bash || true
-            echo "$HOME/.buddy/bin" >> "$GITHUB_PATH" || true
-          fi
-          bdy --version || echo "bdy not found (non-fatal)"
+          sudo apt-get update
+          sudo apt-get install -y xvfb lsof
 
-      - name: Free 8080 (just in case)
-        run: sudo fuser -k 8080/tcp || true
-
-      - run: npm ci || npm i
-
-      - name: Install Cypress deps
-        run: sudo apt-get update && sudo apt-get install -y xvfb
-
-      # Cypress-Binary cachen (beschleunigt Folge-Builds)
       - name: Cache Cypress binary
         uses: actions/cache@v4
         with:
           path: ~/.cache/Cypress
           key: ${{ runner.os }}-cypress-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
 
-      - name: Vitest + Upload
+      - name: npm ci (fallback zu npm i)
+        run: npm ci || npm i
+
+      - name: Port ${{ env.PORT }} freiräumen (zur Sicherheit)
+        run: |
+          sudo fuser -k $PORT/tcp || true
+          pkill -f 'vite|node.*vite' || true
+          (command -v lsof >/dev/null && lsof -tiTCP:$PORT -sTCP:LISTEN | xargs -r kill -9) || true
+
+      - name: Vitest ausführen + Buddy-Upload
         env:
           BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
-        run: npm run test:ci
+        run: |
+          mkdir -p reports
+          npx vitest run --reporter=junit --outputFile=reports/junit.xml
+          bash ./scripts/buddyupload.sh reports/junit.xml || true
 
-      - name: Cypress + Upload
+      - name: Cypress e2e (Electron, headless) + Buddy-Upload
         env:
           BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
-        run: npm run cy:ci
+        run: |
+          npx --yes start-server-and-test \
+            "bash -lc 'curl -sf http://127.0.0.1:$PORT/@vite/client || npm run dev -- --port $PORT --strictPort'" \
+            http://127.0.0.1:$PORT/@vite/client \
+            "xvfb-run -a npx cypress run --e2e --browser electron --reporter junit --reporter-options mochaFile=reports/cypress-[hash].xml,toConsole=false"
+          bash ./scripts/buddyupload.sh reports/cypress-*.xml || true
 
-      # JUnit immer hochladen (auch bei Fail)
       - name: Upload JUnit artifacts
-        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: junit-reports
           path: reports/*.xml
           if-no-files-found: warn
-
-      # Bei Fehlschlag: Screenshots/Videos sichern
-      - name: Upload Cypress screenshots (on fail)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-screenshots
-          path: cypress/screenshots/**/*
-          if-no-files-found: ignore
-
-      - name: Upload Cypress videos (on fail)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cypress-videos
-          path: cypress/videos/**/*
-          if-no-files-found: ignore
