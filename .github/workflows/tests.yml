@@ -1,6 +1,11 @@
 name: tests
 on: [push, pull_request]
 
+# Verhindert doppelte Builds pro Branch (bricht ältere ab)
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-latest
@@ -12,23 +17,15 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      # Buddy UT CLI robust installieren und in PATH einhängen
-      # (wenn curl-Installer scheitert, probiere apt-Fallback)
+      # Buddy UT CLI robust installieren (nicht-fatal) + in PATH
       - name: Install Buddy UT CLI (non-fatal)
-        continue-on-error: true
-        shell: bash
         run: |
-          set -euxo pipefail
-          if ! curl -fsSL https://get.buddy.works/ut | bash; then
-            echo "curl installer failed, trying apt fallback" >&2
-            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/buddy-ut.list
-            sudo apt-get update
-            sudo apt-get install -y bdy
+          set -e
+          if ! command -v bdy >/dev/null 2>&1; then
+            curl -fsSL https://es.buddy.works/bdy/install.sh | bash || true
+            echo "$HOME/.buddy/bin" >> "$GITHUB_PATH" || true
           fi
-          echo "$HOME/.buddy/bin" >> "$GITHUB_PATH"
-          echo "/usr/bin" >> "$GITHUB_PATH"   # falls apt den bdy nach /usr/bin gelegt hat
-          command -v bdy || true
-          bdy --version || true
+          bdy --version || echo "bdy not found (non-fatal)"
 
       - name: Free 8080 (just in case)
         run: sudo fuser -k 8080/tcp || true
@@ -37,6 +34,13 @@ jobs:
 
       - name: Install Cypress deps
         run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      # Cypress-Binary cachen (beschleunigt Folge-Builds)
+      - name: Cache Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-cypress-${{ hashFiles('**/package-lock.json') }}
 
       - name: Vitest + Upload
         env:
@@ -48,6 +52,7 @@ jobs:
           BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
         run: npm run cy:ci
 
+      # JUnit immer hochladen (auch bei Fail)
       - name: Upload JUnit artifacts
         if: always()
         uses: actions/upload-artifact@v4
@@ -55,3 +60,20 @@ jobs:
           name: junit-reports
           path: reports/*.xml
           if-no-files-found: warn
+
+      # Bei Fehlschlag: Screenshots/Videos sichern
+      - name: Upload Cypress screenshots (on fail)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: cypress/screenshots/**/*
+          if-no-files-found: ignore
+
+      - name: Upload Cypress videos (on fail)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: cypress/videos/**/*
+          if-no-files-found: ignore
