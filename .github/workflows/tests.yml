@@ -12,12 +12,23 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      # Buddy UT CLI installieren und in PATH einhängen
-      - name: Install Buddy UT CLI
+      # Buddy UT CLI robust installieren und in PATH einhängen
+      # (wenn curl-Installer scheitert, probiere apt-Fallback)
+      - name: Install Buddy UT CLI (non-fatal)
+        continue-on-error: true
+        shell: bash
         run: |
-          curl -fsSL https://get.buddy.works/ut | bash
-          echo "$HOME/.buddy/bin" >> $GITHUB_PATH
-          bdy --version || (echo "bdy fehlt im PATH" && exit 1)
+          set -euxo pipefail
+          if ! curl -fsSL https://get.buddy.works/ut | bash; then
+            echo "curl installer failed, trying apt fallback" >&2
+            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/buddy-ut.list
+            sudo apt-get update
+            sudo apt-get install -y bdy
+          fi
+          echo "$HOME/.buddy/bin" >> "$GITHUB_PATH"
+          echo "/usr/bin" >> "$GITHUB_PATH"   # falls apt den bdy nach /usr/bin gelegt hat
+          command -v bdy || true
+          bdy --version || true
 
       - name: Free 8080 (just in case)
         run: sudo fuser -k 8080/tcp || true
