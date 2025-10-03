@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/Header";
+import { SettingsDialog } from "@/components/SettingsDialog";
 
 interface Project {
   id: string;
@@ -21,6 +22,7 @@ interface Project {
 const Projects = () => {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showSettings, setShowSettings] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -82,7 +84,8 @@ const Projects = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
-      <Header onSettingsClick={() => {}} />
+      <Header onSettingsClick={() => setShowSettings(true)} />
+      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
       
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
         <div className="flex items-center justify-between mb-8">

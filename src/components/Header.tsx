@@ -1,11 +1,27 @@
 import { Settings, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface HeaderProps {
   onSettingsClick: () => void;
 }
 
 export const Header = ({ onSettingsClick }: HeaderProps) => {
+  const { toast } = useToast();
+
+  const handleGitHubClick = () => {
+    const githubRepo = localStorage.getItem("github-repo");
+    if (githubRepo) {
+      window.open(githubRepo, "_blank");
+    } else {
+      toast({
+        title: "GitHub nicht konfiguriert",
+        description: "Bitte konfiguriere dein GitHub Repository in den Einstellungen",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <header className="h-14 border-b border-border bg-card flex items-center justify-between px-6">
       <div className="flex items-center gap-3">
@@ -18,7 +34,12 @@ export const Header = ({ onSettingsClick }: HeaderProps) => {
       </div>
       
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="icon" className="hover:bg-secondary">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          className="hover:bg-secondary"
+          onClick={handleGitHubClick}
+        >
           <Github className="w-5 h-5" />
         </Button>
         <Button 

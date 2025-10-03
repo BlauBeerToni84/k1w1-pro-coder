@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { LiveProgress } from "@/components/LiveProgress";
+import { PreviewPanel } from "@/components/PreviewPanel";
 
 interface Message {
   id: string;
@@ -39,6 +40,7 @@ const Chat = () => {
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [project, setProject] = useState<Project | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -272,83 +274,95 @@ const Chat = () => {
             </p>
           </div>
         </div>
-        {project?.apk_url && (
-          <Button size="sm" className="shadow-neon" asChild>
-            <a href={project.apk_url} download>
-              <Download className="w-4 h-4 mr-2" />
-              APK
-            </a>
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {project?.apk_url && (
+            <Button size="sm" className="shadow-neon" asChild>
+              <a href={project.apk_url} download>
+                <Download className="w-4 h-4 mr-2" />
+                APK
+              </a>
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Live Progress */}
       {project && <LiveProgress project={project} onUpdate={(updated) => setProject(updated)} />}
 
-      {/* Chat Messages */}
-      <ScrollArea className="flex-1 p-3 md:p-4" ref={scrollRef}>
-        <div className="max-w-4xl mx-auto space-y-3 md:space-y-4">
-          {messages.map((message) => (
-            <div
-              key={message.id}
-              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
-            >
-              <div
-                className={`max-w-[85%] md:max-w-[80%] rounded-lg p-3 md:p-4 ${
-                  message.role === "user"
-                    ? "bg-primary text-primary-foreground shadow-neon"
-                    : "bg-secondary text-foreground border border-border"
-                }`}
-              >
-                {message.isTyping ? (
-                  <div className="text-sm md:text-base">{message.content}</div>
-                ) : (
-                  renderContent(message.content)
-                )}
-              </div>
-            </div>
-          ))}
-          {isTyping && (
-            <div className="flex justify-start animate-fade-in">
-              <div className="bg-secondary rounded-lg border border-border p-3">
-                <div className="flex gap-1">
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+      {/* Split Screen: Chat + Preview */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Chat Panel - Left Side */}
+        <div className="w-full md:w-1/2 flex flex-col border-r border-border">
+          <ScrollArea className="flex-1 p-3 md:p-4" ref={scrollRef}>
+            <div className="max-w-4xl mx-auto space-y-3 md:space-y-4">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in`}
+                >
+                  <div
+                    className={`max-w-[85%] md:max-w-[80%] rounded-lg p-3 md:p-4 ${
+                      message.role === "user"
+                        ? "bg-primary text-primary-foreground shadow-neon"
+                        : "bg-secondary text-foreground border border-border"
+                    }`}
+                  >
+                    {message.isTyping ? (
+                      <div className="text-sm md:text-base">{message.content}</div>
+                    ) : (
+                      renderContent(message.content)
+                    )}
+                  </div>
                 </div>
-              </div>
+              ))}
+              {isTyping && (
+                <div className="flex justify-start animate-fade-in">
+                  <div className="bg-secondary rounded-lg border border-border p-3">
+                    <div className="flex gap-1">
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                      <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
-      </ScrollArea>
+          </ScrollArea>
 
-      {/* Input */}
-      <div className="p-3 md:p-4 border-t border-border bg-card">
-        <div className="max-w-4xl mx-auto flex gap-2">
-          <Textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Beschreibe deine App... (Shift+Enter für neue Zeile)"
-            className="min-h-[60px] md:min-h-[80px] resize-none text-sm md:text-base"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-              }
-            }}
-            disabled={isTyping}
-          />
-          <Button 
-            onClick={handleSend} 
-            size="icon"
-            className="h-[60px] w-[60px] md:h-[80px] md:w-[80px] shrink-0 shadow-neon"
-            disabled={isTyping || !input.trim()}
-          >
-            <Send className="w-5 h-5 md:w-6 md:h-6" />
-          </Button>
+          {/* Input */}
+          <div className="p-3 md:p-4 border-t border-border bg-card">
+            <div className="flex gap-2">
+              <Textarea
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Beschreibe deine App... (Shift+Enter für neue Zeile)"
+                className="min-h-[60px] md:min-h-[80px] resize-none text-sm md:text-base"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                  }
+                }}
+                disabled={isTyping}
+              />
+              <Button 
+                onClick={handleSend} 
+                size="icon"
+                className="h-[60px] w-[60px] md:h-[80px] md:w-[80px] shrink-0 shadow-neon"
+                disabled={isTyping || !input.trim()}
+              >
+                <Send className="w-5 h-5 md:w-6 md:h-6" />
+              </Button>
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground text-center">
+              <kbd className="px-1.5 py-0.5 rounded bg-muted">Enter</kbd> zum Senden
+            </div>
+          </div>
         </div>
-        <div className="mt-2 text-xs text-muted-foreground text-center max-w-4xl mx-auto">
-          <kbd className="px-1.5 py-0.5 rounded bg-muted">Enter</kbd> zum Senden
+
+        {/* Preview Panel - Right Side - Only on Desktop */}
+        <div className="hidden md:flex md:w-1/2">
+          <PreviewPanel projectId={project?.id} />
         </div>
       </div>
     </div>
