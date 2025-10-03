@@ -1,0 +1,39 @@
+name: tests
+on: [push, pull_request]
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Free 8080 (just in case)
+        run: sudo fuser -k 8080/tcp || true
+
+      - run: npm ci || npm i
+
+      - name: Install Cypress deps
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+
+      - name: Vitest + Upload
+        env:
+          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
+        run: npm run test:ci
+
+      - name: Cypress + Upload
+        env:
+          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
+        run: npm run cy:ci
+
+      - name: Upload JUnit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports
+          path: reports/*.xml
+          if-no-files-found: warn
