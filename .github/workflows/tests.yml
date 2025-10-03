@@ -12,9 +12,12 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
-      # Buddy Unit Tests CLI installieren (stellt den Befehl "bdy" bereit)
+      # Buddy UT CLI installieren und in PATH einhängen
       - name: Install Buddy UT CLI
-        run: curl -fsSL https://get.buddy.works/ut | bash
+        run: |
+          curl -fsSL https://get.buddy.works/ut | bash
+          echo "$HOME/.buddy/bin" >> $GITHUB_PATH
+          bdy --version || (echo "bdy fehlt im PATH" && exit 1)
 
       - name: Free 8080 (just in case)
         run: sudo fuser -k 8080/tcp || true
