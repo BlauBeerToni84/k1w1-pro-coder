@@ -12,6 +12,10 @@ jobs:
           node-version: '22'
           cache: 'npm'
 
+      # Buddy Unit Tests CLI installieren (stellt den Befehl "bdy" bereit)
+      - name: Install Buddy UT CLI
+        run: curl -fsSL https://get.buddy.works/ut | bash
+
       - name: Free 8080 (just in case)
         run: sudo fuser -k 8080/tcp || true
 
