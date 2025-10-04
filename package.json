@@ -21,7 +21,9 @@
     "cy:run": "cypress run --e2e --browser electron",
     "test:e2e": "bash -lc 'PORT=${PORT:-5173}; npx kill-port $PORT || true; fuser -k $PORT/tcp 2>/dev/null || true; sleep 1; if curl -fsS http://127.0.0.1:$PORT/@vite/client >/dev/null 2>&1; then   echo \"Vite already up on $PORT\"; xvfb-run -a npm run cy:run; else   npx --yes start-server-and-test     \"npm run dev -- --port $PORT --strictPort\"     http://127.0.0.1:$PORT/@vite/client     \"xvfb-run -a npm run cy:run\"; fi'",
     "test:unit": "vitest run --reporter=junit --outputFile=reports/junit.xml",
-    "test:all": "npm run test:unit && npm run test:e2e"
+    "test:all": "npm run test:unit && npm run test:e2e",
+    "test:open": "cypress open --e2e",
+    "dev:port": "bash -lc 'PORT=${PORT:-5173}; vite --port ${PORT} --strictPort'"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
