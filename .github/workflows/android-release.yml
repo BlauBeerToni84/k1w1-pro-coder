@@ -56,7 +56,7 @@ jobs:
           ./gradlew :app:assembleRelease --no-daemon --stacktrace --info
           echo "out_dir=$PWD/app/build/outputs/apk/release" >> "$GITHUB_OUTPUT"
 
-      - name: Align & sign APK (optional, wenn Secrets existieren)
+      - name: Align & sign APK (optional, wenn Secrets vorhanden)
         id: signing
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
