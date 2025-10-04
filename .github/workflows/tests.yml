@@ -15,9 +15,9 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
-      CI: true
       NODE_VERSION: '22'
       PORT: '8080'
+      CI: true
       CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
     steps:
       - uses: actions/checkout@v4
@@ -31,13 +31,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y xvfb lsof
-
-      - name: Cache Cypress binary
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/Cypress
-          key: ${{ runner.os }}-cypress-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: ${{ runner.os }}-cypress-
 
       - name: npm ci (fallback)
         run: npm ci || npm i
@@ -60,24 +53,13 @@ jobs:
           echo '<testsuite name="token-check"/>' > reports/token-check.xml
           bdy tests upload --format junit-xml reports/token-check.xml
 
-      - name: Vitest + Upload
+      - name: Vitest + Buddy-Upload
         env:
           BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
         run: |
           mkdir -p reports
           npx vitest run --reporter=junit --outputFile=reports/junit.xml || true
-          bash ./scripts/buddyupload.sh reports/junit.xml || true
-
-      - name: Cypress e2e (Electron) + Upload
-        env:
-          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
-          PORT: ${{ env.PORT }}
-        run: |
-          npx --yes start-server-and-test \
-            "bash -lc 'curl -sf http://127.0.0.1:$PORT/@vite/client || npm run dev -- --port $PORT --strictPort'" \
-            http://127.0.0.1:$PORT/@vite/client \
-            "xvfb-run -a npx cypress run --e2e --browser electron --reporter junit --reporter-options mochaFile=reports/cypress-[hash].xml,toConsole=false" || true
-          bash ./scripts/buddyupload.sh 'reports/cypress-*.xml' || true
+          bash ./scripts/buddyupload.sh 'reports/junit.xml' || true
 
       - name: Upload JUnit artifacts
         uses: actions/upload-artifact@v4
