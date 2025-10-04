@@ -45,14 +45,16 @@ jobs:
           mkdir -p reports
           npx vitest run --reporter=junit --outputFile=reports/junit.xml || true
 
-      - name: Run Cypress (Electron, headless)
+      - name: Run Cypress (Electron, headless) – PORT Fix
         env:
           PORT: ${{ env.PORT }}
         run: |
+          npx kill-port 5173 || true
+          PORT=${PORT:-5173}
           npx --yes start-server-and-test \
-            "npm run dev -- --port $PORT --strictPort" \
+            "bash -lc 'npm run dev -- --port $PORT --strictPort'" \
             http://127.0.0.1:$PORT/@vite/client \
-            "xvfb-run -a npx cypress run --e2e --browser electron"
+            "bash -lc 'xvfb-run -a npx cypress run --e2e --browser electron'"
 
       - name: Upload JUnit artifacts
         if: always()
@@ -62,13 +64,13 @@ jobs:
           path: reports/**/*.xml
           if-no-files-found: warn
 
-      # Läuft NUR wenn ein Secret gesetzt ist
-      - name: Buddy upload (optional)
+      - name: Buddy upload (only if secret exists)
         if: ${{ secrets.BUDDY_UT_TOKEN != '' }}
         env:
           BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
         run: |
           set -euo pipefail
+          echo "Buddy token present: $([ -n "${BUDDY_UT_TOKEN:-}" ] && echo yes || echo no)"
           if ! command -v bdy >/dev/null 2>&1; then
             echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
             sudo apt-get update -y
@@ -76,6 +78,6 @@ jobs:
           fi
           shopt -s nullglob
           for f in reports/*.xml; do
-            echo "Buddy: $f"
-            bdy tests upload --format junit-xml "$f"
+            echo "Buddy upload: $f"
+            bdy tests upload --format junit-xml "$f" || echo "WARN: Buddy-Upload fehlgeschlagen für $f"
           done
