@@ -67,7 +67,6 @@ jobs:
           pkill -f 'vite|node.*vite' || true
           (command -v lsof >/dev/null && lsof -tiTCP:$PORT -sTCP:LISTEN | xargs -r kill -9) || true
 
-      # schlägt sofort fehl, falls das Secret ungültig ist
       - name: Check Buddy UT token via CLI
         env:
           BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
