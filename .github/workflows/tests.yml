@@ -21,6 +21,7 @@ jobs:
       ELECTRON_DISABLE_GPU: '1'
       DBUS_SESSION_BUS_ADDRESS: '/dev/null'
       NO_AT_BRIDGE: '1'
+      TERM: 'xterm'
       CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
 
     steps:
