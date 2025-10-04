@@ -4,6 +4,9 @@ on: [workflow_dispatch]
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk-local
+      ANDROID_HOME:     ${{ runner.temp }}/android-sdk-local
     steps:
       - uses: actions/checkout@v4
 
@@ -14,7 +17,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '17'     # wichtig: breit kompatibel (AGP/Gradle)
 
       - name: Build (local SDK + Capacitor + Gradle)
         run: |
@@ -22,11 +25,12 @@ jobs:
           bash -x ci-build-android.sh 2>&1 | tee buildlog.txt
 
       - name: Upload APK artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: artifacts/**
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload build log (always)
         if: always()
