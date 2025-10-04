@@ -30,7 +30,6 @@ if [ -f package-lock.json ]; then
 else
   npm i
 fi
-# optionaler Web-Build
 if npm run | grep -qE '^  build'; then
   npm run build
 fi
@@ -40,10 +39,27 @@ if [ ! -d android ]; then
   npx cap add android
 fi
 npx cap sync android
+
+echo "== Gradle Wrapper & Flags =="
+WRP=android/gradle/wrapper/gradle-wrapper.properties
+if [ -f "$WRP" ]; then
+  sed -i 's#^distributionUrl=.*#distributionUrl=https://services.gradle.org/distributions/gradle-8.9-bin.zip#' "$WRP" || true
+fi
+{
+  echo "org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8"
+  echo "android.useAndroidX=true"
+  echo "android.enableJetifier=true"
+} >> android/gradle.properties
+
+# Optional: Shrink aus (R8 vermeidet Fehler in frischen Projekten)
+sed -i 's/minifyEnabled true/minifyEnabled false/g' android/app/build.gradle || true
+sed -i 's/shrinkResources true/shrinkResources false/g' android/app/build.gradle || true
+
 chmod +x android/gradlew
 
 echo "== Gradle assembleRelease =="
 pushd android >/dev/null
+./gradlew --version || true
 ./gradlew :app:assembleRelease --no-daemon --stacktrace --info
 OUT_DIR="$PWD/app/build/outputs/apk/release"
 popd >/dev/null
@@ -56,18 +72,20 @@ if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" &
   echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
   APKU="$(ls android/app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -n1 || true)"
   if [ -z "$APKU" ]; then
-    APKU="$(ls android/app/build/outputs/apk/release/*.apk | head -n1)"
+    APKU="$(ls android/app/build/outputs/apk/release/*.apk | head -n1 || true)"
   fi
-  zipalign -p -f 4 "$APKU" artifacts/app-release-aligned.apk
-  apksigner sign \
-    --ks android/app/release.jks \
-    --ks-key-alias "$ANDROID_KEY_ALIAS" \
-    --ks-pass pass:"$ANDROID_KEYSTORE_PASSWORD" \
-    --key-pass pass:"$ANDROID_KEY_PASSWORD" \
-    --out artifacts/app-release-signed.apk \
-    artifacts/app-release-aligned.apk
-  apksigner verify --print-certs artifacts/app-release-signed.apk
-  SIGNED_OUT="artifacts/app-release-signed.apk"
+  if [ -n "$APKU" ]; then
+    zipalign -p -f 4 "$APKU" artifacts/app-release-aligned.apk
+    apksigner sign \
+      --ks android/app/release.jks \
+      --ks-key-alias "$ANDROID_KEY_ALIAS" \
+      --ks-pass pass:"$ANDROID_KEYSTORE_PASSWORD" \
+      --key-pass pass:"$ANDROID_KEY_PASSWORD" \
+      --out artifacts/app-release-signed.apk \
+      artifacts/app-release-aligned.apk
+    apksigner verify --print-certs artifacts/app-release-signed.apk
+    SIGNED_OUT="artifacts/app-release-signed.apk"
+  fi
 else
   echo "Keine Signatur-Secrets gefunden – lade unsigned APK hoch."
 fi
