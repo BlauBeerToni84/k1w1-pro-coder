@@ -26,18 +26,17 @@ jobs:
           set -euxo pipefail
           bash -x ci-build-android.sh 2>&1 | tee buildlog.txt
 
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: artifacts/**
+          if-no-files-found: error
+
       - name: Upload build log (always)
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: buildlog
           path: buildlog.txt
-          if-no-files-found: error
-
-      - name: Upload APK artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: android-apk
-          path: artifacts/**
           if-no-files-found: warn
