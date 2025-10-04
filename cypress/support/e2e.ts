@@ -1,2 +1,1 @@
-import './commands'
-Cypress.on('uncaught:exception', () => false)
+import '@testing-library/cypress/add-commands';

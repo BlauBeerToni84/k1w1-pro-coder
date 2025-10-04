@@ -11,13 +11,15 @@
     "preview": "vite preview",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:ci": "vitest run --reporter=junit --outputFile=reports/junit.xml && (command -v bdy >/dev/null && bdy tests upload --format junit-xml reports/junit.xml || echo 'bdy not found, skipping Buddy upload')",
+    "test:ci": "npm run test:e2e",
     "cy": "xvfb-run -a cypress run --e2e --browser electron",
     "cy:ci": "start-server-and-test 'sh -c \"curl -sf http://127.0.0.1:8080/@vite/client || npm run dev\"' http://127.0.0.1:8080/@vite/client 'ELECTRON_DISABLE_GPU=1 xvfb-run -a cypress run --e2e --browser electron' && (command -v bdy >/dev/null && bdy tests upload --format junit-xml \"reports/cypress-*.xml\" || echo 'bdy not found, skipping Buddy upload')",
     "ci": "npm run test:ci && npm run cy:ci",
     "free8080": "kill-port 8080",
     "free8080hard": "bash -lc \"fuser -k 8080/tcp || true; pkill -f 'vite|node.*vite' || true; (command -v lsof >/dev/null && lsof -tiTCP:8080 -sTCP:LISTEN | xargs -r kill -9) || true\"",
-    "precy:ci": "bash -lc '[[ \"$CI\" == \"true\" ]] && npm run free8080hard || true'"
+    "precy:ci": "bash -lc '[[ \"$CI\" == \"true\" ]] && npm run free8080hard || true'",
+    "cy:run": "cypress run --e2e --browser electron",
+    "test:e2e": "start-server-and-test \"npm run dev -- --port $PORT --strictPort\" http://127.0.0.1:$PORT/@vite/client \"npm run cy:run\""
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
@@ -80,6 +82,7 @@
     "@buddy-works/unit-tests": "^0.13.0",
     "@eslint/js": "^9.32.0",
     "@tailwindcss/typography": "^0.5.16",
+    "@testing-library/cypress": "^10.1.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^22.18.8",
