@@ -33,7 +33,7 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Bump Gradle wrapper & Gradle flags
+      - name: Bump Gradle wrapper & Flags
         run: |
           sed -i 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip#' android/gradle/wrapper/gradle-wrapper.properties || true
           {
@@ -42,15 +42,13 @@ jobs:
             echo "android.enableJetifier=true"
           } >> android/gradle.properties
 
-      - name: Show AGP/Gradle files
+      - name: Patch release buildType (kein Shrink/ProGuard)
         run: |
-          ./android/gradlew --version
-          grep -R "com.android.tools.build:gradle" -n android || true
-          cat android/gradle/wrapper/gradle-wrapper.properties
+          sed -i 's/minifyEnabled true/minifyEnabled false/g' android/app/build.gradle || true
+          sed -i 's/shrinkResources true/shrinkResources false/g' android/app/build.gradle || true
 
       - name: Build unsigned release
-        run: |
-          ./android/gradlew :app:assembleRelease --no-daemon --stacktrace --info
+        run: ./android/gradlew :app:assembleRelease --no-daemon --stacktrace --info
 
       - name: Align & sign APK
         if: ${{ success() }}
@@ -78,11 +76,10 @@ jobs:
 
       - name: Upload Gradle logs (always)
         if: always()
+        run: |
+          tar -czf gradle-logs.tgz android/.gradle || true
         uses: actions/upload-artifact@v4
         with:
           name: release-logs
           if-no-files-found: ignore
-          path: |
-            android/.gradle/**/*
-            android/app/build/outputs/logs/**/*
-            **/build/reports/**/*
+          path: gradle-logs.tgz
