@@ -19,7 +19,7 @@
     "free8080hard": "bash -lc \"fuser -k 8080/tcp || true; pkill -f 'vite|node.*vite' || true; (command -v lsof >/dev/null && lsof -tiTCP:8080 -sTCP:LISTEN | xargs -r kill -9) || true\"",
     "precy:ci": "bash -lc '[[ \"$CI\" == \"true\" ]] && npm run free8080hard || true'",
     "cy:run": "cypress run --e2e --browser electron",
-    "test:e2e": "bash -lc 'PORT=${PORT:-5173};  (npx kill-port $PORT || true);  (fuser -k $PORT/tcp 2>/dev/null || true);  sleep 1;  npx --yes start-server-and-test \"npm run dev -- --port $PORT --strictPort\"  http://127.0.0.1:$PORT/@vite/client \"xvfb-run -a npm run cy:run\"'",
+    "test:e2e": "bash -lc 'PORT=${PORT:-5173}; npx kill-port $PORT || true; fuser -k $PORT/tcp 2>/dev/null || true; sleep 1; if curl -fsS http://127.0.0.1:$PORT/@vite/client >/dev/null 2>&1; then   echo \"Vite already up on $PORT\"; xvfb-run -a npm run cy:run; else   npx --yes start-server-and-test     \"npm run dev -- --port $PORT --strictPort\"     http://127.0.0.1:$PORT/@vite/client     \"xvfb-run -a npm run cy:run\"; fi'",
     "test:unit": "vitest run --reporter=junit --outputFile=reports/junit.xml",
     "test:all": "npm run test:unit && npm run test:e2e"
   },
