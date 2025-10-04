@@ -17,7 +17,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '17'     # wichtig: breit kompatibel (AGP/Gradle)
+          java-version: '17'   # stabil für AGP/Gradle
 
       - name: Build (local SDK + Capacitor + Gradle)
         run: |

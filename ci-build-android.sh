@@ -39,11 +39,11 @@ chmod +x android/gradlew || true
 echo "== Gradle assembleRelease =="
 pushd android >/dev/null
 set +e
-./gradlew --version || true
 ./gradlew :app:assembleRelease --no-daemon --stacktrace --info
 RC=$?
 set -e
 popd >/dev/null
+
 if [ $RC -ne 0 ]; then
   echo "Release build failed (RC=$RC), trying assembleDebug..."
   pushd android >/dev/null
@@ -54,14 +54,16 @@ fi
 echo "== Collect artifacts =="
 mkdir -p artifacts
 
-# Prefer signed release, dann unsigned, dann debug
+# Reihenfolge: signed release -> plain release -> unsigned -> debug
 SIGNED_APK="$(ls android/app/build/outputs/apk/release/*-signed*.apk 2>/dev/null | head -n1 || true)"
+RELEASE_APK="$(ls android/app/build/outputs/apk/release/app-release*.apk 2>/dev/null | grep -v unsigned | head -n1 || true)"
 UNSIGNED_APK="$(ls android/app/build/outputs/apk/release/*-unsigned*.apk 2>/dev/null | head -n1 || true)"
-RELEASE_APK="$(ls android/app/build/outputs/apk/release/*.apk 2>/dev/null | grep -v unsigned | head -n1 || true)"
 DEBUG_APK="$(ls android/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -n1 || true)"
 
 for A in "$SIGNED_APK" "$RELEASE_APK" "$UNSIGNED_APK" "$DEBUG_APK"; do
-  [ -n "${A:-}" ] && [ -f "$A" ] && cp -f "$A" artifacts/
+  if [ -n "${A:-}" ] && [ -f "$A" ]; then
+    cp -f "$A" artifacts/
+  fi
 done
 
 if ! ls -1 artifacts/*.apk >/dev/null 2>&1; then
