@@ -26,7 +26,7 @@ sdkmanager "platform-tools" "platforms;android-${PLATFORM_API}" "build-tools;${B
 
 echo "== npm build & Capacitor =="
 if [ -f package-lock.json ]; then npm ci; else npm i; fi
-if npm run | grep -qE '^  build'; then npm run build; fi
+if npm run | grep -qE '^\s*build\s'; then npm run build; fi
 
 echo "== Capacitor Android-Projekt =="
 if [ ! -d android ]; then npx cap add android; fi
@@ -41,9 +41,9 @@ fi
   echo "org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8"
   echo "android.useAndroidX=true"
   echo "android.enableJetifier=true"
-} >> android/gradle.properties
+} >> android/gradle.properties || true
 
-# Optional: Shrink aus
+# Optional: Shrink aus (robuster bei Erstbuilds)
 sed -i 's/minifyEnabled true/minifyEnabled false/g' android/app/build.gradle || true
 sed -i 's/shrinkResources true/shrinkResources false/g' android/app/build.gradle || true
 
@@ -56,12 +56,12 @@ pushd android >/dev/null
 popd >/dev/null
 
 mkdir -p artifacts
-APKU="$(ls android/app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -n1 || true)"
-if [ -z "$APKU" ]; then
-  APKU="$(ls android/app/build/outputs/apk/release/*.apk 2>/dev/null | head -n1 || true)"
-fi
+
+# Unsigned APK aufsammeln (Fallback wenn Signing fehlt)
+cp android/app/build/outputs/apk/release/*.apk artifacts/ 2>/dev/null || true
 
 echo "== Optional signieren (wenn Secrets gesetzt) =="
+APKU="$(ls android/app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -n1 || true)"
 SIGNED_OUT=""
 if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" && -n "${ANDROID_KEY_ALIAS:-}" && -n "${ANDROID_KEY_PASSWORD:-}" && -n "$APKU" ]]; then
   echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
@@ -75,11 +75,8 @@ if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" &
     artifacts/app-release-aligned.apk
   apksigner verify --print-certs artifacts/app-release-signed.apk
   SIGNED_OUT="artifacts/app-release-signed.apk"
-else
-  echo "Keine Signatur (Secrets fehlen oder APK fehlt)."
 fi
 
-echo "== Artefakte sammeln =="
-cp android/app/build/outputs/apk/release/*.apk artifacts/ 2>/dev/null || true
+echo "SIGNED=${SIGNED_OUT}" > artifacts/summary.txt
+echo "== Fertig =="
 ls -lh artifacts || true
-if [ -n "$SIGNED_OUT" ]; then echo "SIGNED=$SIGNED_OUT" > artifacts/summary.txt; else echo "SIGNED=" > artifacts/summary.txt; fi

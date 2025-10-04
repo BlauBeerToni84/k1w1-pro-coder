@@ -5,8 +5,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
@@ -25,9 +24,17 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
           set -euxo pipefail
-          bash ci-build-android.sh
+          bash -x ci-build-android.sh 2>&1 | tee buildlog.txt
 
-      - name: Upload artifacts (signed/unsigned)
+      - name: Upload build log (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildlog
+          path: buildlog.txt
+          if-no-files-found: ignore
+
+      - name: Upload APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
