@@ -28,3 +28,20 @@ jobs:
           name: junit-reports
           path: reports/*.xml
           if-no-files-found: warn
+      - name: Buddy upload (optional)
+        if: always()
+        env:
+          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! command -v bdy >/dev/null 2>&1; then
+            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
+            sudo apt-get update -y
+            sudo apt-get install -y bdy
+          fi
+          bdy --version || true
+          shopt -s nullglob
+          for f in reports/*.xml; do
+            echo "Buddy: $f"
+            bdy tests upload --format junit-xml "$f" || true
+          done
