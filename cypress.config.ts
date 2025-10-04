@@ -1,14 +1,11 @@
 import { defineConfig } from "cypress";
-
-const PORT = process.env.PORT || "8080";
-
+const PORT = process.env.PORT || "5173";
 export default defineConfig({
   reporter: "junit",
-  reporterOptions: {
-    mochaFile: "reports/cypress-[hash].xml",
-    toConsole: false,
-  },
+  reporterOptions: { mochaFile: "reports/cypress-[hash].xml", toConsole: false },
   video: false,
+  defaultCommandTimeout: 10000,
+  pageLoadTimeout: 60000,
   e2e: {
     baseUrl: `http://127.0.0.1:${PORT}`,
     specPattern: "cypress/e2e/**/*.cy.{js,jsx,ts,tsx}",

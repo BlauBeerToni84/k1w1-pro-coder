@@ -1,8 +1,9 @@
-describe('App loads', () => {
-  it('shows the page and has content', () => {
+describe('smoke', () => {
+  it('serves the app (200) & renders root', () => {
+    cy.request('/').its('status').should('eq', 200);
     cy.visit('/');
-    // Beispiel-Assertions (bitte auf dein Projekt anpassen)
-    cy.contains(/vite|react|welcome/i);
-    cy.get('body').should('be.visible');
+    cy.document().its('readyState').should('eq', 'complete');
+    cy.get('body', { timeout: 10000 }).should('be.visible');
+    cy.get('#root', { timeout: 10000 }).should('exist');
   });
 });
