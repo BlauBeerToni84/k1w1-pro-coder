@@ -1,9 +1,11 @@
 name: Android APK (Capacitor)
-
 on:
   workflow_dispatch:
   push:
     branches: ["main"]
+
+permissions:
+  contents: read
 
 jobs:
   web:
@@ -47,7 +49,7 @@ jobs:
           npm i -D @capacitor/cli@latest @capacitor/android@latest
           npm i @capacitor/core@latest
           if [ ! -f capacitor.config.ts ] && [ ! -f capacitor.config.json ]; then
-            npx cap init "Speak Build APK" "com.frucht718.speakbuildapk" --web-dir=dist
+            npx cap init "Speak Build APK" "com.example.app" --web-dir=dist
           fi
 
       - name: Build web (Vite)
@@ -88,6 +90,26 @@ jobs:
           echo "=== android root ==="
           ls -la android
 
+      - name: Bump Gradle wrapper (>=8.7) & Gradle flags
+        run: |
+          set -euxo pipefail
+          sed -i -E "s#distributionUrl=.*gradle-[0-9.]+-bin.zip#distributionUrl=https://services.gradle.org/distributions/gradle-8.7-bin.zip#" android/gradle/wrapper/gradle-wrapper.properties || true
+          {
+            echo "org.gradle.jvmargs=-Xmx4g -Dfile.encoding=UTF-8"
+            echo "org.gradle.daemon=false"
+            echo "android.useAndroidX=true"
+            echo "android.enableJetifier=true"
+          } >> android/gradle.properties
+
+      - name: Show AGP/Gradle files
+        run: |
+          echo "----- gradle-wrapper.properties -----"
+          cat android/gradle/wrapper/gradle-wrapper.properties || true
+          echo "----- variables.gradle -----"
+          cat android/variables.gradle || true
+          echo "----- build.gradle (root) -----"
+          cat android/build.gradle || true
+
       - name: Capacitor sync
         run: node ./node_modules/@capacitor/cli/bin/capacitor sync android
 
@@ -107,4 +129,17 @@ jobs:
           name: apk-debug
           path: android/app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
+          retention-days: 7
+
+      # Immer Logs hochladen (auch bei Fehlschlag)
+      - name: Upload Gradle logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-logs
+          path: |
+            android/.gradle/**
+            android/app/build/reports/**
+            android/build/reports/**
+            android/app/build/outputs/**
           retention-days: 7
