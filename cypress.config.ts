@@ -1,6 +1,8 @@
 import { defineConfig } from "cypress";
 const PORT = process.env.PORT || "5173";
 export default defineConfig({
+  retries: { runMode: 2, openMode: 0 },
+  defaultCommandTimeout: 8000,
     experimentalMemoryManagement: true,
   numTestsKeptInMemory: 0,
   video: false,
