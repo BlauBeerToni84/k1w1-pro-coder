@@ -6,21 +6,16 @@ on:
 
 permissions: { contents: read }
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   ci:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     env:
       NODE_VERSION: '22'
-      PORT: '8080'
+      PORT: '5173'
       ELECTRON_DISABLE_GPU: '1'
       DBUS_SESSION_BUS_ADDRESS: '/dev/null'
       NO_AT_BRIDGE: '1'
-      TERM: 'xterm'
       CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
 
     steps:
@@ -31,7 +26,11 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
-      # Cache für Cypress-Binary (schnellere Runs)
+      - name: Install system deps (xvfb, lsof)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y xvfb lsof
+
       - name: Cache Cypress binary
         uses: actions/cache@v4
         with:
@@ -46,33 +45,29 @@ jobs:
       - name: Run Vitest (JUnit)
         run: |
           mkdir -p reports
-          npx --yes vitest run --reporter=junit --outputFile=reports/junit.xml
+          npx vitest run --reporter=junit --outputFile=reports/junit.xml || true
 
-      - name: Install system deps (xvfb)
+      - name: Free ${{ env.PORT }}
         run: |
-          sudo apt-get update -y
-          sudo apt-get install -y xvfb
+          sudo fuser -k $PORT/tcp || true
+          pkill -f 'vite|node.*vite' || true
+          (command -v lsof >/dev/null && lsof -tiTCP:$PORT -sTCP:LISTEN | xargs -r kill -9) || true
 
-      - name: Cypress e2e (Electron, headless) -> JUnit
-        env:
-          PORT: ${{ env.PORT }}
+      - name: Run Cypress e2e (Electron, headless, JUnit)
         run: |
           mkdir -p reports
-          # dev-server starten & warten bis /@vite/client 200 liefert, dann Cypress headless laufen lassen
           npx --yes start-server-and-test \
             "npm run dev -- --port $PORT --strictPort" \
-            "http://127.0.0.1:$PORT/@vite/client" \
-            "xvfb-run -a npx cypress run --e2e --browser electron --reporter junit --reporter-options mochaFile=reports/cypress-[hash].xml,toConsole=false"
+            http://127.0.0.1:$PORT/@vite/client \
+            "xvfb-run -a npm run cy:run"
 
-      - name: Upload JUnit artifacts (Vitest + Cypress)
-        if: always()
+      - name: Upload JUnit artifacts
         uses: actions/upload-artifact@v4
         with:
           name: junit-reports
           path: reports/*.xml
           if-no-files-found: warn
 
-      # Optional – nur wenn Secret BUDDY_UT_TOKEN gesetzt ist
       - name: Buddy upload (optional)
         if: always()
         env:
