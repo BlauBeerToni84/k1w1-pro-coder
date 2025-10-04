@@ -1,7 +1,10 @@
 import { defineConfig } from "cypress";
 const PORT = process.env.PORT || "5173";
 export default defineConfig({
-  reporter: "junit",
+    experimentalMemoryManagement: true,
+  numTestsKeptInMemory: 0,
+  video: false,
+reporter: "junit",
   reporterOptions: { mochaFile: "reports/cypress-[hash].xml", toConsole: false },
   video: false,
   defaultCommandTimeout: 10000,
