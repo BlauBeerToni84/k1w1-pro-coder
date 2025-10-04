@@ -27,3 +27,8 @@ reports/
 cypress/screenshots/
 cypress/videos/
 artifacts/
+
+# Secrets
+.env
+.env.*
+secrets.*
