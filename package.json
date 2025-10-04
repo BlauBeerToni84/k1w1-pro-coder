@@ -18,7 +18,7 @@
     "free8080": "kill-port 8080",
     "free8080hard": "bash -lc \"fuser -k 8080/tcp || true; pkill -f 'vite|node.*vite' || true; (command -v lsof >/dev/null && lsof -tiTCP:8080 -sTCP:LISTEN | xargs -r kill -9) || true\"",
     "precy:ci": "bash -lc '[[ \"$CI\" == \"true\" ]] && npm run free8080hard || true'",
-    "cy:run": "cypress run --e2e --browser chrome -- --no-sandbox --disable-dev-shm-usage",
+    "cy:run": "cypress run --e2e --browser electron",
     "test:e2e": "bash -lc 'PORT=${PORT:-5173}; npx kill-port $PORT || true; fuser -k $PORT/tcp 2>/dev/null || true; sleep 1; if curl -fsS http://127.0.0.1:$PORT/@vite/client >/dev/null 2>&1; then   echo \"Vite already up on $PORT\"; xvfb-run -a npm run cy:run; else   npx --yes start-server-and-test     \"npm run dev -- --port $PORT --strictPort\"     http://127.0.0.1:$PORT/@vite/client     \"xvfb-run -a npm run cy:run\"; fi'",
     "test:unit": "vitest run --reporter=junit --outputFile=reports/junit.xml",
     "test:all": "npm run test:unit && npm run test:e2e",
@@ -27,7 +27,7 @@
     "dev:kill": "bash -lc 'PORT=${PORT:-5173}; npx kill-port $PORT || true; fuser -k $PORT/tcp 2>/dev/null || true'",
     "dev:bg": "bash -lc 'PORT=${PORT:-5173}; nohup vite --port ${PORT} --strictPort > .vite.log 2>&1 & echo $! > .vite.pid; echo started:$PORT:pid=$(cat .vite.pid)'",
     "dev:stop": "bash -lc 'if [ -f .vite.pid ]; then kill -9 $(cat .vite.pid) 2>/dev/null || true; rm -f .vite.pid; echo stopped; else echo no .vite.pid; fi'",
-    "test:headed": "xvfb-run -a cypress run --e2e --browser chrome --headed -- --no-sandbox --disable-dev-shm-usage",
+    "test:headed": "xvfb-run -a cypress run --e2e --browser electron --headed",
     "ci:local": "bash -lc 'set -euo pipefail; mkdir -p reports; echo \"🧪 Vitest\"; npx vitest run --reporter=junit --outputFile=reports/junit.xml || true; echo \"🧪 Cypress\"; PORT=${PORT:-5173} npm run test:e2e; if [ -n \"${BUDDY_UT_TOKEN:-}\" ]; then   echo \"☁️ Buddy-Upload aktiv\";   if ! command -v bdy >/dev/null 2>&1; then     echo \"ℹ️ installing bdy (requires sudo – kann ggf. scheitern)\";     (echo \"deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main\" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null && sudo apt-get update -y && sudo apt-get install -y bdy) || echo \"WARN: bdy install failed\";   fi;   shopt -s nullglob; for f in reports/*.xml; do echo \"Buddy upload: $f\"; bdy tests upload --format junit-xml \"$f\" || echo \"WARN: Buddy-Upload fehlgeschlagen für $f\"; done; else echo \"(Buddy-Upload übersprungen – kein Token)\"; fi'",
     "cy:run:electron": "cypress run --e2e --browser electron"
   },
@@ -118,4 +118,4 @@
     "vite": "^5.4.19",
     "vitest": "^3.2.4"
   }
-}\n
+}
