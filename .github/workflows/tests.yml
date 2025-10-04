@@ -6,6 +6,10 @@ on:
 
 permissions: { contents: read }
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-24.04
@@ -31,14 +35,6 @@ jobs:
           sudo apt-get update -y
           sudo apt-get install -y xvfb lsof
 
-      - name: Cache Cypress binary
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/Cypress
-          key: ${{ runner.os }}-cypress-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-cypress-
-
       - name: Install deps
         run: npm ci || npm i
 
@@ -47,25 +43,21 @@ jobs:
           mkdir -p reports
           npx vitest run --reporter=junit --outputFile=reports/junit.xml || true
 
-      - name: Free ${{ env.PORT }}
+      - name: Run Cypress (Electron, headless)
+        env:
+          PORT: ${{ env.PORT }}
         run: |
-          sudo fuser -k $PORT/tcp || true
-          pkill -f 'vite|node.*vite' || true
-          (command -v lsof >/dev/null && lsof -tiTCP:$PORT -sTCP:LISTEN | xargs -r kill -9) || true
-
-      - name: Run Cypress e2e (Electron, headless, JUnit)
-        run: |
-          mkdir -p reports
           npx --yes start-server-and-test \
             "npm run dev -- --port $PORT --strictPort" \
             http://127.0.0.1:$PORT/@vite/client \
-            "xvfb-run -a npm run cy:run"
+            "xvfb-run -a npx cypress run --e2e --browser electron"
 
       - name: Upload JUnit artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: junit-reports
-          path: reports/*.xml
+          path: reports/**/*.xml
           if-no-files-found: warn
 
       - name: Buddy upload (optional)
@@ -79,9 +71,8 @@ jobs:
             sudo apt-get update -y
             sudo apt-get install -y bdy
           fi
-          bdy --version || true
           shopt -s nullglob
           for f in reports/*.xml; do
             echo "Buddy: $f"
-            bdy tests upload --format junit-xml "$f" || true
+            bdy tests upload --format junit-xml "$f" || echo "WARN: Buddy-Upload fehlgeschlagen für $f"
           done
