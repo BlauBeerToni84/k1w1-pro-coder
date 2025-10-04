@@ -5,6 +5,11 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
+      - name: Sanity ping
+        run: |
+          set -euxo pipefail
+          echo "Runner ok: $(uname -a)"
+
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
@@ -75,13 +80,13 @@ jobs:
 
       - name: Align & sign APK (if secrets exist)
         id: signing
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
           ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
-        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
         run: |
           set -euxo pipefail
           echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
