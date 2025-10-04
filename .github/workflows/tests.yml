@@ -78,3 +78,44 @@ jobs:
             echo "Buddy: $f"
             bdy tests upload --format junit-xml "$f" || echo "WARN: Buddy-Upload fehlgeschlagen für $f"
           done
+      - name: Install deps
+        run: npm ci || npm i
+
+      - name: Run Vitest (JUnit)
+        run: |
+          mkdir -p reports
+          npx vitest run --reporter=junit --outputFile=reports/junit.xml || true
+
+      - name: Run Cypress (Electron, headless)
+        env:
+          PORT: ${{ env.PORT }}
+        run: |
+          npx --yes start-server-and-test \
+            "npm run dev -- --port $PORT --strictPort" \
+            http://127.0.0.1:$PORT/@vite/client \
+            "xvfb-run -a npx cypress run --e2e --browser electron"
+
+      - name: Upload JUnit artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-reports
+          path: reports/**/*.xml
+          if-no-files-found: warn
+
+      - name: Buddy upload (optional)
+        if: always()
+        env:
+          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
+        run: |
+          set -euo pipefail
+          if ! command -v bdy >/dev/null 2>&1; then
+            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
+            sudo apt-get update -y
+            sudo apt-get install -y bdy
+          fi
+          shopt -s nullglob
+          for f in reports/*.xml; do
+            echo "Buddy: $f"
+            bdy tests upload --format junit-xml "$f" || echo "WARN: Buddy-Upload fehlgeschlagen für $f"
+          done
