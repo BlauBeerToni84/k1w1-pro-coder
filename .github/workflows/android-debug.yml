@@ -40,7 +40,7 @@ jobs:
           npm ci
           npm run build
 
-      - name: Add + Sync Android
+      - name: Add + Sync Android (Capacitor)
         run: |
           npx cap add android || true
           npx cap sync android
