@@ -1,11 +1,1 @@
-name: android-release
-on: [workflow_dispatch]
-
-jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Sanity ping
-        run: |
-          set -euxo pipefail
-          echo "Runner ok: $(uname -a)"
+# (HIER den kompletten Workflow aus meiner letzten Nachricht einsetzen)
