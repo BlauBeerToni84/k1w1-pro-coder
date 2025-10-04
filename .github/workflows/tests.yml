@@ -9,14 +9,22 @@ permissions: { contents: read }
 jobs:
   ci:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 30
+    env:
+      NODE_VERSION: '22'
+      PORT: '8080'
+      ELECTRON_DISABLE_GPU: '1'
+      DBUS_SESSION_BUS_ADDRESS: '/dev/null'
+      NO_AT_BRIDGE: '1'
+      TERM: 'xterm'
+      CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
       - name: Install deps
@@ -27,7 +35,23 @@ jobs:
           mkdir -p reports
           npx --yes vitest run --reporter=junit --outputFile=reports/junit.xml
 
-      - name: Upload JUnit artifacts
+      - name: Install system deps (xvfb)
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y xvfb
+
+      - name: Cypress e2e (Electron, headless) -> JUnit
+        env:
+          # Falls du zusätzliche ENV für deine App brauchst, hier ergänzen
+          PORT: ${{ env.PORT }}
+        run: |
+          mkdir -p reports
+          npx --yes start-server-and-test \
+            "npm run dev -- --port $PORT --strictPort" \
+            "http://127.0.0.1:$PORT/@vite/client" \
+            "xvfb-run -a npx cypress run --e2e --browser electron --reporter junit --reporter-options mochaFile=reports/cypress-[hash].xml,toConsole=false"
+
+      - name: Upload JUnit artifacts (Vitest + Cypress)
         if: always()
         uses: actions/upload-artifact@v4
         with:
