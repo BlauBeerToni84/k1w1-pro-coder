@@ -10,24 +10,31 @@ jobs:
   ci:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
+
       - name: Install deps
         run: npm ci || npm i
+
       - name: Run Vitest (JUnit)
         run: |
           mkdir -p reports
-          npx vitest run --reporter=junit --outputFile=reports/junit.xml || true
+          npx --yes vitest run --reporter=junit --outputFile=reports/junit.xml
+
       - name: Upload JUnit artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: junit-reports
           path: reports/*.xml
           if-no-files-found: warn
+
       - name: Buddy upload (optional)
         if: always()
         env:
@@ -35,7 +42,8 @@ jobs:
         run: |
           set -euo pipefail
           if ! command -v bdy >/dev/null 2>&1; then
-            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
+            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" \
+              | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
             sudo apt-get update -y
             sudo apt-get install -y bdy
           fi
