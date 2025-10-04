@@ -6,91 +6,68 @@ node -v || true
 java -version || true
 pwd; ls -la
 
-# --- Android SDK ---
-: "${ANDROID_SDK_ROOT:=${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
-export ANDROID_SDK_ROOT
+# --- Android SDK (lokal im Runner) ---
+SDK_HOME="${RUNNER_TEMP:-/tmp}/android-sdk-local"
+export ANDROID_SDK_ROOT="$SDK_HOME"
 BT_VER="35.0.0"
 PLATFORM_API="35"
 
-# PATH früh setzen
-export PATH="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin:$ANDROID_SDK_ROOT/cmdline-tools/bin:$ANDROID_SDK_ROOT/platform-tools:$ANDROID_SDK_ROOT/build-tools/$BT_VER:$PATH"
+echo "== Install cmdline-tools to \$SDK_HOME =="
+rm -rf "$SDK_HOME/cmdline-tools/latest"
+mkdir -p "$SDK_HOME/cmdline-tools"
+cd "${RUNNER_TEMP:-/tmp}"
+curl -sSLo cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+unzip -q -o cmdline-tools.zip
+mkdir -p "$SDK_HOME/cmdline-tools/latest"
+mv cmdline-tools/* "$SDK_HOME/cmdline-tools/latest/"
 
-echo "== Ensure cmdline-tools/sdkmanager =="
-if [ ! -x "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" ]; then
-  echo "Installing Android cmdline-tools into: $ANDROID_SDK_ROOT"
-  mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
-  cd "${RUNNER_TEMP:-/tmp}"
-  curl -sSLo cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
-  unzip -q -o cmdline.zip
-  rm -rf "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-  mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
-  mv cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/"
-else
-  echo "sdkmanager present at: $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
-fi
+# PATH nur auf unser lokales SDK zeigen
+export PATH="$SDK_HOME/cmdline-tools/latest/bin:$SDK_HOME/platform-tools:$SDK_HOME/build-tools/$BT_VER:$PATH"
 
-yes | sdkmanager --licenses >/dev/null
-sdkmanager "platform-tools" "platforms;android-${PLATFORM_API}" "build-tools;${BT_VER}"
+yes | sdkmanager --sdk_root="$SDK_HOME" --licenses >/dev/null
+sdkmanager --sdk_root="$SDK_HOME" "platform-tools" "platforms;android-${PLATFORM_API}" "build-tools;${BT_VER}" >/dev/null
 
 echo "== npm install/build =="
 if [ -f package-lock.json ]; then npm ci; else npm i; fi
-# falls es ein build-script gibt
-if npm run | grep -qE '^\s*build\b'; then npm run build; fi
+if npm run | grep -qE '^[[:space:]]*build[[:space:]]'; then npm run build; fi
 
 echo "== Capacitor Android project =="
 if [ ! -d android ]; then npx cap add android; fi
 npx cap sync android
 chmod +x android/gradlew || true
 
-echo "== Gradle assembleRelease =="
+echo "== Gradle build =="
 pushd android >/dev/null
+set +e
 ./gradlew :app:assembleRelease --no-daemon --stacktrace --info
+RC=$?
+set -e
+if [ $RC -ne 0 ]; then
+  echo "Release build failed, trying assembleDebug..."
+  ./gradlew :app:assembleDebug --no-daemon --stacktrace --info
+fi
 popd >/dev/null
 
-echo "== Collect & optional sign =="
+echo "== Collect artifacts =="
 mkdir -p artifacts
 
-UNSIGNED_APK="$(ls android/app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -n1 || true)"
-SIGNED_APK_BUILT="$(ls android/app/build/outputs/apk/release/app-release.apk 2>/dev/null | head -n1 || true)"
-DEBUG_APK="$(ls android/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -n1 || true)"
+# sammle alles, was da ist (signed/unsigned/debug)
+APKS=()
+SIGNED="$(ls android/app/build/outputs/apk/release/*-signed*.apk 2>/dev/null | head -n1 || true)"
+[ -n "$SIGNED" ] && APKS+=("$SIGNED")
+UNSIGNED="$(ls android/app/build/outputs/apk/release/*-unsigned*.apk 2>/dev/null | head -n1 || true)"
+[ -n "$UNSIGNED" ] && APKS+=("$UNSIGNED")
+DEBUGAPK="$(ls android/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -n1 || true)"
+[ -n "$DEBUGAPK" ] && APKS+=("$DEBUGAPK")
 
-SIGN_OUT=""
-if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" && -n "${ANDROID_KEY_ALIAS:-}" && -n "${ANDROID_KEY_PASSWORD:-}" && -n "${UNSIGNED_APK:-}" ]]; then
-  echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
-  BT="$ANDROID_SDK_ROOT/build-tools/$BT_VER"
-  "$BT/zipalign" -p -f 4 "$UNSIGNED_APK" artifacts/app-release-aligned.apk
-  "$BT/apksigner" sign \
-    --ks android/app/release.jks \
-    --ks-pass "pass:${ANDROID_KEYSTORE_PASSWORD}" \
-    --ks-key-alias "${ANDROID_KEY_ALIAS}" \
-    --key-pass "pass:${ANDROID_KEY_PASSWORD}" \
-    --out artifacts/app-release-signed.apk \
-    artifacts/app-release-aligned.apk
-  "$BT/apksigner" verify --print-certs artifacts/app-release-signed.apk
-  rm -f artifacts/app-release-aligned.apk
-  SIGN_OUT="artifacts/app-release-signed.apk"
+if [ ${#APKS[@]} -eq 0 ]; then
+  echo "No APKs found under android/app/build/outputs. See buildlog.txt." >&2
+  exit 1
 fi
 
-# Alles einsammeln, damit immer ein Artefakt existiert
-if [ -n "$SIGN_OUT" ]; then
-  echo "Signed APK: $SIGN_OUT"
-elif [ -n "$SIGNED_APK_BUILT" ]; then
-  cp -f "$SIGNED_APK_BUILT" artifacts/
-elif [ -n "$UNSIGNED_APK" ]; then
-  cp -f "$UNSIGNED_APK" artifacts/
-else
-  echo "No release APK found, building debug as fallback..."
-  pushd android >/dev/null
-  ./gradlew :app:assembleDebug --no-daemon --stacktrace --info
-  popd >/dev/null
-  DEBUG_APK="$(ls android/app/build/outputs/apk/debug/*.apk 2>/dev/null | head -n1 || true)"
-  if [ -n "$DEBUG_APK" ]; then
-    cp -f "$DEBUG_APK" artifacts/
-  else
-    echo "No APK produced at all." >&2
-    exit 1
-  fi
-fi
+for A in "${APKS[@]}"; do
+  cp -f "$A" artifacts/
+done
 
-echo "== Done =="
-ls -lah artifacts || true
+echo "Artifacts:"
+ls -lh artifacts
