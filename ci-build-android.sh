@@ -30,12 +30,12 @@ if [ -f package-lock.json ]; then
 else
   npm i
 fi
-# nur bauen, wenn es ein build-script gibt
+# optionaler Web-Build
 if npm run | grep -qE '^  build'; then
   npm run build
 fi
 
-# Android-Projekt vorbereiten
+echo "== Capacitor Android-Projekt =="
 if [ ! -d android ]; then
   npx cap add android
 fi
@@ -51,7 +51,7 @@ popd >/dev/null
 mkdir -p artifacts
 SIGNED_OUT=""
 
-echo "== Optional signieren (nur wenn Secrets vorhanden) =="
+echo "== Optional signieren (wenn Secrets gesetzt) =="
 if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" && -n "${ANDROID_KEY_ALIAS:-}" && -n "${ANDROID_KEY_PASSWORD:-}" ]]; then
   echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
   APKU="$(ls android/app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -n1 || true)"
