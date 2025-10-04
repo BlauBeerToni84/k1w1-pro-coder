@@ -6,6 +6,10 @@ on:
 
 permissions: { contents: read }
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   ci:
     runs-on: ubuntu-24.04
@@ -27,6 +31,15 @@ jobs:
           node-version: ${{ env.NODE_VERSION }}
           cache: npm
 
+      # Cache für Cypress-Binary (schnellere Runs)
+      - name: Cache Cypress binary
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/Cypress
+          key: ${{ runner.os }}-cypress-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-cypress-
+
       - name: Install deps
         run: npm ci || npm i
 
@@ -42,10 +55,10 @@ jobs:
 
       - name: Cypress e2e (Electron, headless) -> JUnit
         env:
-          # Falls du zusätzliche ENV für deine App brauchst, hier ergänzen
           PORT: ${{ env.PORT }}
         run: |
           mkdir -p reports
+          # dev-server starten & warten bis /@vite/client 200 liefert, dann Cypress headless laufen lassen
           npx --yes start-server-and-test \
             "npm run dev -- --port $PORT --strictPort" \
             "http://127.0.0.1:$PORT/@vite/client" \
@@ -59,6 +72,7 @@ jobs:
           path: reports/*.xml
           if-no-files-found: warn
 
+      # Optional – nur wenn Secret BUDDY_UT_TOKEN gesetzt ist
       - name: Buddy upload (optional)
         if: always()
         env:
@@ -66,8 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           if ! command -v bdy >/dev/null 2>&1; then
-            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" \
-              | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
+            echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
             sudo apt-get update -y
             sudo apt-get install -y bdy
           fi
