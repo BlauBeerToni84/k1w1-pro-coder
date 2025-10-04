@@ -6,61 +6,22 @@ on:
 
 permissions: { contents: read }
 
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   ci:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-    env:
-      NODE_VERSION: '22'
-      PORT: '8080'
-      CI: true
-      CYPRESS_CACHE_FOLDER: ~/.cache/Cypress
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
-          node-version: ${{ env.NODE_VERSION }}
+          node-version: 22
           cache: npm
-
-      - name: System deps (xvfb, lsof)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y xvfb lsof
-
-      - name: npm ci (fallback)
+      - name: Install deps
         run: npm ci || npm i
-
-      - name: Install Buddy CLI (bdy)
-        run: |
-          set -eux
-          if command -v bdy >/dev/null 2>&1; then exit 0; fi
-          echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
-          sudo apt-get update -y
-          sudo apt-get install -y bdy
-          bdy --version
-
-      - name: Buddy UT token check
-        env:
-          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
-        run: |
-          set -euo pipefail
-          mkdir -p reports
-          echo '<testsuite name="token-check"/>' > reports/token-check.xml
-          bdy tests upload --format junit-xml reports/token-check.xml
-
-      - name: Vitest + Buddy-Upload
-        env:
-          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
+      - name: Run Vitest (JUnit)
         run: |
           mkdir -p reports
           npx vitest run --reporter=junit --outputFile=reports/junit.xml || true
-          bash ./scripts/buddyupload.sh 'reports/junit.xml' || true
-
       - name: Upload JUnit artifacts
         uses: actions/upload-artifact@v4
         with:
