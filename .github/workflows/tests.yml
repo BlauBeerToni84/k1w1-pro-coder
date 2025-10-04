@@ -1,4 +1,4 @@
-# name: tests
+name: tests
 
 on:
   push:
@@ -22,7 +22,6 @@ jobs:
       CI: true
       NODE_VERSION: '22'
       PORT: '8080'
-      # weniger Electron/DBus/TERM-Geraffel
       ELECTRON_DISABLE_GPU: '1'
       DBUS_SESSION_BUS_ADDRESS: '/dev/null'
       NO_AT_BRIDGE: '1'
@@ -53,11 +52,29 @@ jobs:
       - name: npm ci (fallback zu npm i)
         run: npm ci || npm i
 
+      - name: Install Buddy CLI (bdy)
+        run: |
+          set -eux
+          if command -v bdy >/dev/null 2>&1; then exit 0; fi
+          echo "deb [trusted=yes] https://es.buddy.works/bdy/apt-repo prod main" | sudo tee /etc/apt/sources.list.d/bdy.list >/dev/null
+          sudo apt-get update -y
+          sudo apt-get install -y bdy
+          bdy --version
+
       - name: Port ${{ env.PORT }} freiräumen (zur Sicherheit)
         run: |
           sudo fuser -k $PORT/tcp || true
           pkill -f 'vite|node.*vite' || true
           (command -v lsof >/dev/null && lsof -tiTCP:$PORT -sTCP:LISTEN | xargs -r kill -9) || true
+
+      - name: Check Buddy UT token via CLI
+        env:
+          BUDDY_UT_TOKEN: ${{ secrets.BUDDY_UT_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p reports
+          echo '<testsuite name="token-check"/>' > reports/token-check.xml
+          bdy tests upload --format junit-xml reports/token-check.xml
 
       - name: Vitest ausführen + Buddy-Upload
         env:
