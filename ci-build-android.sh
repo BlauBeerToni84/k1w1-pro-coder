@@ -25,13 +25,15 @@ yes | sdkmanager --licenses >/dev/null
 sdkmanager "platform-tools" "platforms;android-${PLATFORM_API}" "build-tools;${BT_VER}"
 
 echo "== npm build & Capacitor =="
-# Lockfile? Falls keins da ist, normal installieren
 if [ -f package-lock.json ]; then
   npm ci
 else
   npm i
 fi
-npm run build
+# Falls kein build-script existiert, Fehler vermeiden:
+if npm run | grep -qE '^  build'; then
+  npm run build
+fi
 
 # Android-Projekt vorbereiten
 if [ ! -d android ]; then
@@ -52,10 +54,9 @@ SIGNED_OUT=""
 echo "== Optional signieren, falls Secrets gesetzt =="
 if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" && -n "${ANDROID_KEY_ALIAS:-}" && -n "${ANDROID_KEY_PASSWORD:-}" ]]; then
   echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
-  # Finde ein APK (unsigned bevorzugt, sonst das einzige vorhandene)
-  APKU="$(ls "android/app/build/outputs/apk/release"/*-unsigned.apk 2>/dev/null | head -n1 || true)"
+  APKU="$(ls android/app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -n1 || true)"
   if [ -z "$APKU" ]; then
-    APKU="$(ls "android/app/build/outputs/apk/release"/*.apk | head -n1)"
+    APKU="$(ls android/app/build/outputs/apk/release/*.apk | head -n1)"
   fi
   zipalign -p -f 4 "$APKU" artifacts/app-release-aligned.apk
   apksigner sign \
@@ -72,7 +73,6 @@ else
 fi
 
 echo "== Artefakte sammeln =="
-# immer auch unsigned Ausgaben kopieren (Fallback)
 cp android/app/build/outputs/apk/release/*.apk artifacts/ 2>/dev/null || true
 
 echo "== Summary =="
