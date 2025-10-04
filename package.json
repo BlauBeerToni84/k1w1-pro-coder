@@ -23,7 +23,11 @@
     "test:unit": "vitest run --reporter=junit --outputFile=reports/junit.xml",
     "test:all": "npm run test:unit && npm run test:e2e",
     "test:open": "cypress open --e2e",
-    "dev:port": "bash -lc 'PORT=${PORT:-5173}; vite --port ${PORT} --strictPort'"
+    "dev:port": "bash -lc 'PORT=${PORT:-5173}; vite --port ${PORT} --strictPort'",
+    "dev:kill": "bash -lc 'PORT=${PORT:-5173}; npx kill-port $PORT || true; fuser -k $PORT/tcp 2>/dev/null || true'",
+    "dev:bg": "bash -lc 'PORT=${PORT:-5173}; nohup vite --port ${PORT} --strictPort > .vite.log 2>&1 & echo $! > .vite.pid; echo started:$PORT:pid=$(cat .vite.pid)'",
+    "dev:stop": "bash -lc 'if [ -f .vite.pid ]; then kill -9 $(cat .vite.pid) 2>/dev/null || true; rm -f .vite.pid; echo stopped; else echo no .vite.pid; fi'",
+    "test:headed": "xvfb-run -a cypress run --e2e --browser electron --headed"
   },
   "dependencies": {
     "@capacitor/android": "^7.4.3",
@@ -112,4 +116,4 @@
     "vite": "^5.4.19",
     "vitest": "^3.2.4"
   }
-}
+}\n
