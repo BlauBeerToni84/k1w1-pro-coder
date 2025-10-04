@@ -32,11 +32,12 @@ jobs:
         with:
           name: buildlog
           path: buildlog.txt
-          if-no-files-found: ignore
+          if-no-files-found: error
 
       - name: Upload APK artifacts
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
           path: artifacts/**
-          if-no-files-found: error
+          if-no-files-found: warn
