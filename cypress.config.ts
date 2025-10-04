@@ -8,7 +8,6 @@ export default defineConfig({
   video: false,
 reporter: "junit",
   reporterOptions: { mochaFile: "reports/cypress-[hash].xml", toConsole: false },
-  video: false,
   defaultCommandTimeout: 10000,
   pageLoadTimeout: 60000,
   e2e: {
