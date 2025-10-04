@@ -1,1 +1,130 @@
-# (HIER den kompletten Workflow aus meiner letzten Nachricht einsetzen)
+name: android-release
+on: [workflow_dispatch]
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Sanity ping
+        run: |
+          set -euxo pipefail
+          echo "Runner ok: $(uname -a)"
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install Android SDK + build-tools
+        env:
+          ANDROID_SDK_ROOT: ${{ runner.temp }}/android-sdk
+        run: |
+          set -euxo pipefail
+          echo "ANDROID_SDK_ROOT=$ANDROID_SDK_ROOT" >> "$GITHUB_ENV"
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+          cd "$RUNNER_TEMP"
+          curl -sSLo cmdline.zip https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+          unzip -q cmdline.zip
+          mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          mv cmdline-tools/* "$ANDROID_SDK_ROOT/cmdline-tools/latest/"
+          echo "$ANDROID_SDK_ROOT/cmdline-tools/latest/bin" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/platform-tools" >> "$GITHUB_PATH"
+          echo "$ANDROID_SDK_ROOT/build-tools/35.0.0" >> "$GITHUB_PATH"
+          yes | sdkmanager --licenses
+          sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Prepare Capacitor (fresh android)
+        run: |
+          set -euxo pipefail
+          npm ci || npm i
+          npm run build
+          # Android-Projekt (falls nicht vorhanden) frisch erzeugen und syncen
+          if [ ! -d android ]; then npx cap add android; fi
+          npx cap sync android
+
+      - name: Bump Gradle wrapper & project flags
+        run: |
+          set -euxo pipefail
+          sed -i 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip#' android/gradle/wrapper/gradle-wrapper.properties || true
+          {
+            echo "org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8"
+            echo "android.useAndroidX=true"
+            echo "android.enableJetifier=true"
+          } >> android/gradle.properties
+
+      - name: Show AGP/Gradle versions
+        working-directory: android
+        run: |
+          ./gradlew --version
+          grep -R "com.android.tools.build:gradle" -n || true
+          cat gradle/wrapper/gradle-wrapper.properties || true
+
+      - name: (Optional) Disable shrink for release
+        run: |
+          sed -i 's/minifyEnabled true/minifyEnabled false/g' android/app/build.gradle || true
+          sed -i 's/shrinkResources true/shrinkResources false/g' android/app/build.gradle || true
+
+      - name: Build unsigned release
+        id: build
+        working-directory: android
+        run: |
+          set -euxo pipefail
+          ./gradlew :app:assembleRelease --no-daemon --stacktrace --info
+          echo "out_dir=$PWD/app/build/outputs/apk/release" >> "$GITHUB_OUTPUT"
+
+      - name: Align & sign APK (if secrets exist)
+        id: signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_SDK_ROOT: ${{ env.ANDROID_SDK_ROOT }}
+        if: ${{ secrets.ANDROID_KEYSTORE_BASE64 != '' && secrets.ANDROID_KEY_ALIAS != '' && secrets.ANDROID_KEYSTORE_PASSWORD != '' && secrets.ANDROID_KEY_PASSWORD != '' }}
+        run: |
+          set -euxo pipefail
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
+          BT="$ANDROID_SDK_ROOT/build-tools/35.0.0"
+          APKU=$(ls "${{ steps.build.outputs.out_dir }}"/*-unsigned.apk 2>/dev/null | head -n1 || true)
+          if [ -z "$APKU" ]; then
+            # Manche Projekte erzeugen direkt app-release.apk
+            APKU=$(ls "${{ steps.build.outputs.out_dir }}/app-"*.apk | head -n1)
+          fi
+          "$BT/zipalign" -p -f 4 "$APKU" app-release-aligned.apk
+          "$BT/apksigner" sign --ks android/app/release.jks --ks-key-alias "$ANDROID_KEY_ALIAS" \
+            --ks-pass pass:"$ANDROID_KEYSTORE_PASSWORD" --key-pass pass:"$ANDROID_KEY_PASSWORD" \
+            --out app-release-signed.apk app-release-aligned.apk
+          "$BT/apksigner" verify --print-certs app-release-signed.apk
+          echo "apk=app-release-signed.apk" >> "$GITHUB_OUTPUT"
+
+      - name: Upload signed APK
+        if: ${{ steps.signing.outputs.apk != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-release
+          path: ${{ steps.signing.outputs.apk }}
+
+      - name: Upload unsigned APK (fallback)
+        if: ${{ steps.signing.outputs.apk == '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: apk-release-unsigned
+          path: ${{ steps.build.outputs.out_dir }}/*.apk
+
+      - name: Upload Gradle cache/logs (always)
+        if: always()
+        run: |
+          tar -czf gradle-logs.tgz android/.gradle || true
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-logs
+          path: gradle-logs.tgz
+          if-no-files-found: ignore
