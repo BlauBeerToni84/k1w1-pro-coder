@@ -44,31 +44,8 @@ jobs:
           set -euxo pipefail
           npm ci || npm i
           npm run build
-          # Android-Projekt (falls nicht vorhanden) frisch erzeugen und syncen
           if [ ! -d android ]; then npx cap add android; fi
           npx cap sync android
-
-      - name: Bump Gradle wrapper & project flags
-        run: |
-          set -euxo pipefail
-          sed -i 's#^distributionUrl=.*#distributionUrl=https\://services.gradle.org/distributions/gradle-8.9-bin.zip#' android/gradle/wrapper/gradle-wrapper.properties || true
-          {
-            echo "org.gradle.jvmargs=-Xmx3g -Dfile.encoding=UTF-8"
-            echo "android.useAndroidX=true"
-            echo "android.enableJetifier=true"
-          } >> android/gradle.properties
-
-      - name: Show AGP/Gradle versions
-        working-directory: android
-        run: |
-          ./gradlew --version
-          grep -R "com.android.tools.build:gradle" -n || true
-          cat gradle/wrapper/gradle-wrapper.properties || true
-
-      - name: (Optional) Disable shrink for release
-        run: |
-          sed -i 's/minifyEnabled true/minifyEnabled false/g' android/app/build.gradle || true
-          sed -i 's/shrinkResources true/shrinkResources false/g' android/app/build.gradle || true
 
       - name: Build unsigned release
         id: build
@@ -93,7 +70,6 @@ jobs:
           BT="$ANDROID_SDK_ROOT/build-tools/35.0.0"
           APKU=$(ls "${{ steps.build.outputs.out_dir }}"/*-unsigned.apk 2>/dev/null | head -n1 || true)
           if [ -z "$APKU" ]; then
-            # Manche Projekte erzeugen direkt app-release.apk
             APKU=$(ls "${{ steps.build.outputs.out_dir }}/app-"*.apk | head -n1)
           fi
           "$BT/zipalign" -p -f 4 "$APKU" app-release-aligned.apk
@@ -116,15 +92,3 @@ jobs:
         with:
           name: apk-release-unsigned
           path: ${{ steps.build.outputs.out_dir }}/*.apk
-
-      - name: Upload Gradle cache/logs (always)
-        if: always()
-        run: |
-          tar -czf gradle-logs.tgz android/.gradle || true
-
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: release-logs
-          path: gradle-logs.tgz
-          if-no-files-found: ignore
