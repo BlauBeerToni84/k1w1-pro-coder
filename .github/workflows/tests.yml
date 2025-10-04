@@ -1,4 +1,4 @@
-name: tests
+# name: tests
 
 on:
   push:
@@ -22,6 +22,7 @@ jobs:
       CI: true
       NODE_VERSION: '22'
       PORT: '8080'
+      # weniger Electron/DBus/TERM-Geraffel
       ELECTRON_DISABLE_GPU: '1'
       DBUS_SESSION_BUS_ADDRESS: '/dev/null'
       NO_AT_BRIDGE: '1'
