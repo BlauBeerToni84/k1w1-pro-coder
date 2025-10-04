@@ -30,7 +30,7 @@ if [ -f package-lock.json ]; then
 else
   npm i
 fi
-# Falls kein build-script existiert, Fehler vermeiden:
+# nur bauen, wenn es ein build-script gibt
 if npm run | grep -qE '^  build'; then
   npm run build
 fi
@@ -51,7 +51,7 @@ popd >/dev/null
 mkdir -p artifacts
 SIGNED_OUT=""
 
-echo "== Optional signieren, falls Secrets gesetzt =="
+echo "== Optional signieren (nur wenn Secrets vorhanden) =="
 if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" && -n "${ANDROID_KEY_ALIAS:-}" && -n "${ANDROID_KEY_PASSWORD:-}" ]]; then
   echo "$ANDROID_KEYSTORE_BASE64" | base64 -d > android/app/release.jks
   APKU="$(ls android/app/build/outputs/apk/release/*-unsigned.apk 2>/dev/null | head -n1 || true)"
@@ -69,7 +69,7 @@ if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" && -n "${ANDROID_KEYSTORE_PASSWORD:-}" &
   apksigner verify --print-certs artifacts/app-release-signed.apk
   SIGNED_OUT="artifacts/app-release-signed.apk"
 else
-  echo "Kein Signatur-Secret gefunden – lade unsigned APK hoch."
+  echo "Keine Signatur-Secrets gefunden – lade unsigned APK hoch."
 fi
 
 echo "== Artefakte sammeln =="
