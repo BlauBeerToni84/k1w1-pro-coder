@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -10,9 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Brain, Github, Smartphone, Save } from "lucide-react";
+import { Brain, Github, Database, Save, Check, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -20,31 +20,33 @@ interface SettingsDialogProps {
 }
 
 export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
-  const [aiProvider, setAiProvider] = useState("lovable");
-  const [aiModel, setAiModel] = useState("google/gemini-2.5-flash");
-  const [openaiKey, setOpenaiKey] = useState("");
-  const [anthropicKey, setAnthropicKey] = useState("");
-  const [groqKey, setGroqKey] = useState("");
+  const [supabaseUrl, setSupabaseUrl] = useState("");
+  const [supabaseKey, setSupabaseKey] = useState("");
   const [githubToken, setGithubToken] = useState("");
   const [githubRepo, setGithubRepo] = useState("");
-  const [expoToken, setExpoToken] = useState("");
-  const [expoSlug, setExpoSlug] = useState("");
+  const [relayUrl, setRelayUrl] = useState("");
+  const [showSupabaseKey, setShowSupabaseKey] = useState(false);
+  const [showGithubToken, setShowGithubToken] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Load from localStorage
+    setSupabaseUrl(localStorage.getItem("supabase-url") || "");
+    setSupabaseKey(localStorage.getItem("supabase-anon-key") || "");
+    setGithubToken(localStorage.getItem("github-token") || "");
+    setGithubRepo(localStorage.getItem("github-repo") || "BlauBeerToni/Cursor-k1w1-Builder");
+    setRelayUrl(localStorage.getItem("relay-url") || "");
+  }, [open]);
+
   const handleSave = () => {
-    // Speichere in localStorage
-    localStorage.setItem("ai-provider", aiProvider);
-    localStorage.setItem("ai-model", aiModel);
-    if (openaiKey) localStorage.setItem("openai-key", openaiKey);
-    if (anthropicKey) localStorage.setItem("anthropic-key", anthropicKey);
-    if (groqKey) localStorage.setItem("groq-key", groqKey);
-    if (githubToken) localStorage.setItem("github-token", githubToken);
-    if (githubRepo) localStorage.setItem("github-repo", githubRepo);
-    if (expoToken) localStorage.setItem("expo-token", expoToken);
-    if (expoSlug) localStorage.setItem("expo-slug", expoSlug);
+    localStorage.setItem("supabase-url", supabaseUrl);
+    localStorage.setItem("supabase-anon-key", supabaseKey);
+    localStorage.setItem("github-token", githubToken);
+    localStorage.setItem("github-repo", githubRepo);
+    localStorage.setItem("relay-url", relayUrl);
 
     toast({
-      title: "✅ Einstellungen gespeichert",
+      title: "Einstellungen gespeichert",
       description: "Deine Konfiguration wurde erfolgreich gespeichert",
     });
     onOpenChange(false);
@@ -55,203 +57,167 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Brain className="w-5 h-5 text-primary" />
-            Einstellungen
+            <Brain className="w-5 h-5 text-primary animate-float" />
+            Integrationen
           </DialogTitle>
           <DialogDescription>
-            Konfiguriere KI-Provider, GitHub und Build-Tools
+            Verbinde deine Tools und Services
           </DialogDescription>
         </DialogHeader>
 
-        <Tabs defaultValue="ai" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="ai">KI-Provider</TabsTrigger>
-            <TabsTrigger value="github">GitHub</TabsTrigger>
-            <TabsTrigger value="expo">Expo</TabsTrigger>
+        <Tabs defaultValue="supabase" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 bg-secondary">
+            <TabsTrigger value="supabase" className="gap-2">
+              <Database className="w-4 h-4" />
+              Supabase
+            </TabsTrigger>
+            <TabsTrigger value="github" className="gap-2">
+              <Github className="w-4 h-4" />
+              GitHub
+            </TabsTrigger>
           </TabsList>
 
-          {/* AI Provider Tab */}
-          <TabsContent value="ai" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label>KI-Provider auswählen</Label>
-              <Select value={aiProvider} onValueChange={setAiProvider}>
-                <SelectTrigger className="bg-secondary border-border">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="lovable">Lovable AI (empfohlen)</SelectItem>
-                  <SelectItem value="openai">OpenAI</SelectItem>
-                  <SelectItem value="anthropic">Anthropic</SelectItem>
-                  <SelectItem value="groq">Groq</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Lovable AI benötigt keinen API Key
-              </p>
-            </div>
-
-            {aiProvider === "lovable" && (
-              <div className="space-y-2">
-                <Label>Modell auswählen</Label>
-                <Select value={aiModel} onValueChange={setAiModel}>
-                  <SelectTrigger className="bg-secondary border-border">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash (schnell)</SelectItem>
-                    <SelectItem value="google/gemini-2.5-pro">Gemini 2.5 Pro (stark)</SelectItem>
-                    <SelectItem value="google/gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (günstig)</SelectItem>
-                    <SelectItem value="openai/gpt-5">GPT-5 (sehr stark)</SelectItem>
-                    <SelectItem value="openai/gpt-5-mini">GPT-5 Mini (ausgewogen)</SelectItem>
-                    <SelectItem value="openai/gpt-5-nano">GPT-5 Nano (schnell)</SelectItem>
-                  </SelectContent>
-                </Select>
+          {/* Supabase Tab */}
+          <TabsContent value="supabase" className="space-y-4 mt-4">
+            <div className="rounded-lg border border-border bg-secondary/30 p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="p-2 rounded-lg bg-accent/20">
+                  <Database className="w-5 h-5 text-accent" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">Supabase</h3>
+                    <Badge variant="outline" className="text-xs bg-accent/20 text-accent border-accent/30">
+                      <Check className="w-3 h-3 mr-1" />
+                      Connected
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Sync up your app with robust and scalable database
+                  </p>
+                </div>
               </div>
-            )}
 
-            {aiProvider === "openai" && (
-              <div className="space-y-2">
-                <Label htmlFor="openai-key">OpenAI API Key</Label>
-                <Input
-                  id="openai-key"
-                  type="password"
-                  value={openaiKey}
-                  onChange={(e) => setOpenaiKey(e.target.value)}
-                  placeholder="sk-..."
-                  className="bg-secondary border-border font-mono text-sm"
-                />
-              </div>
-            )}
-
-            {aiProvider === "anthropic" && (
-              <div className="space-y-2">
-                <Label htmlFor="anthropic-key">Anthropic API Key</Label>
-                <Input
-                  id="anthropic-key"
-                  type="password"
-                  value={anthropicKey}
-                  onChange={(e) => setAnthropicKey(e.target.value)}
-                  placeholder="sk-ant-..."
-                  className="bg-secondary border-border font-mono text-sm"
-                />
-              </div>
-            )}
-
-            {aiProvider === "groq" && (
-              <>
-                <div className="space-y-2">
-                  <Label htmlFor="groq-key">Groq API Key</Label>
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="supabase-url" className="text-sm font-medium">
+                    Supabase URL
+                  </Label>
                   <Input
-                    id="groq-key"
-                    type="password"
-                    value={groqKey}
-                    onChange={(e) => setGroqKey(e.target.value)}
-                    placeholder="gsk_..."
-                    className="bg-secondary border-border font-mono text-sm"
+                    id="supabase-url"
+                    value={supabaseUrl}
+                    onChange={(e) => setSupabaseUrl(e.target.value)}
+                    placeholder="https://xxxxx.supabase.co"
+                    className="mt-1.5 bg-background border-border font-mono text-sm"
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Groq Modell</Label>
-                  <Select value={aiModel} onValueChange={setAiModel}>
-                    <SelectTrigger className="bg-secondary border-border">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="llama-3.3-70b-versatile">Llama 3.3 70B</SelectItem>
-                      <SelectItem value="llama-3.1-8b-instant">Llama 3.1 8B (schnell)</SelectItem>
-                      <SelectItem value="mixtral-8x7b-32768">Mixtral 8x7B</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            )}
 
-            <div className="bg-muted/30 rounded-lg p-4 border border-border">
-              <p className="text-sm font-semibold mb-2">💡 Tipp</p>
-              <p className="text-xs text-muted-foreground">
-                Lovable AI ist der einfachste Weg und benötigt keine API Keys. 
-                Alle Gemini Modelle sind aktuell kostenlos (bis 06.10.2025).
-              </p>
+                <div>
+                  <Label htmlFor="supabase-key" className="text-sm font-medium">
+                    Anon Key
+                  </Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="supabase-key"
+                      type={showSupabaseKey ? "text" : "password"}
+                      value={supabaseKey}
+                      onChange={(e) => setSupabaseKey(e.target.value)}
+                      placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                      className="bg-background border-border font-mono text-sm pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowSupabaseKey(!showSupabaseKey)}
+                    >
+                      {showSupabaseKey ? (
+                        <EyeOff className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
           {/* GitHub Tab */}
           <TabsContent value="github" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="github-token">Personal Access Token</Label>
-              <Input
-                id="github-token"
-                type="password"
-                value={githubToken}
-                onChange={(e) => setGithubToken(e.target.value)}
-                placeholder="ghp_..."
-                className="bg-secondary border-border font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                Benötigt für Push zu GitHub. Erstelle ein Token unter: 
-                github.com/settings/tokens
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="github-repo">Repository URL</Label>
-              <Input
-                id="github-repo"
-                value={githubRepo}
-                onChange={(e) => setGithubRepo(e.target.value)}
-                placeholder="https://github.com/username/repo"
-                className="bg-secondary border-border"
-              />
-            </div>
-
-            <div className="bg-muted/30 rounded-lg p-4 border border-border">
-              <div className="flex gap-2 mb-2">
-                <Github className="w-4 h-4 text-primary mt-0.5" />
-                <div>
-                  <p className="text-sm font-semibold">GitHub Integration</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Token-Berechtigungen: repo, workflow
+            <div className="rounded-lg border border-border bg-secondary/30 p-4">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="p-2 rounded-lg bg-primary/20">
+                  <Github className="w-5 h-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-semibold">GitHub</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Connect your repository for automated builds
                   </p>
                 </div>
               </div>
-            </div>
-          </TabsContent>
 
-          {/* Expo Tab */}
-          <TabsContent value="expo" className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="expo-token">Expo Access Token</Label>
-              <Input
-                id="expo-token"
-                type="password"
-                value={expoToken}
-                onChange={(e) => setExpoToken(e.target.value)}
-                placeholder="..."
-                className="bg-secondary border-border font-mono text-sm"
-              />
-              <p className="text-xs text-muted-foreground">
-                Optional: Für automatische Expo Builds
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="expo-slug">Project Slug</Label>
-              <Input
-                id="expo-slug"
-                value={expoSlug}
-                onChange={(e) => setExpoSlug(e.target.value)}
-                placeholder="@username/project-name"
-                className="bg-secondary border-border"
-              />
-            </div>
-
-            <div className="bg-muted/30 rounded-lg p-4 border border-border">
-              <div className="flex gap-2 mb-2">
-                <Smartphone className="w-4 h-4 text-primary mt-0.5" />
+              <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-semibold">Expo Build Service</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Ermöglicht Cloud-Builds für iOS und Android
+                  <Label htmlFor="github-token" className="text-sm font-medium">
+                    Personal Access Token
+                  </Label>
+                  <div className="relative mt-1.5">
+                    <Input
+                      id="github-token"
+                      type={showGithubToken ? "text" : "password"}
+                      value={githubToken}
+                      onChange={(e) => setGithubToken(e.target.value)}
+                      placeholder="ghp_..."
+                      className="bg-background border-border font-mono text-sm pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowGithubToken(!showGithubToken)}
+                    >
+                      {showGithubToken ? (
+                        <EyeOff className="w-4 h-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="w-4 h-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Benötigt Berechtigungen: repo, workflow
+                  </p>
+                </div>
+
+                <div>
+                  <Label htmlFor="github-repo" className="text-sm font-medium">
+                    Repository
+                  </Label>
+                  <Input
+                    id="github-repo"
+                    value={githubRepo}
+                    onChange={(e) => setGithubRepo(e.target.value)}
+                    placeholder="username/repository"
+                    className="mt-1.5 bg-background border-border font-mono text-sm"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="relay-url" className="text-sm font-medium">
+                    Relay URL (optional)
+                  </Label>
+                  <Input
+                    id="relay-url"
+                    value={relayUrl}
+                    onChange={(e) => setRelayUrl(e.target.value)}
+                    placeholder="https://relay.k1w1.app"
+                    className="mt-1.5 bg-background border-border font-mono text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground mt-1.5">
+                    Für secure GitHub dispatch
                   </p>
                 </div>
               </div>
