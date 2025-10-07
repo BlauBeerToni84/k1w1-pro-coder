@@ -1,71 +1,52 @@
-import { CheckCircle2, Clock, XCircle, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, XCircle } from "lucide-react";
 import { Card } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 
 interface BuildStatusCardProps {
-  step: string;
-  status: "completed" | "running" | "pending" | "failed";
+  title?: string;
+  step?: string;
+  status: "pending" | "running" | "success" | "failed" | "completed";
+  message?: string;
 }
 
-export const BuildStatusCard = ({ step, status }: BuildStatusCardProps) => {
+export const BuildStatusCard = ({ title, step, status, message }: BuildStatusCardProps) => {
+  const displayTitle = title || step || "Step";
+  
   const getIcon = () => {
     switch (status) {
+      case "success":
       case "completed":
-        return <CheckCircle2 className="w-4 h-4 text-accent" />;
+        return <CheckCircle2 className="w-5 h-5 text-green-500 animate-scale-in" />;
       case "running":
-        return <Loader2 className="w-4 h-4 text-primary animate-spin" />;
+        return <Loader2 className="w-5 h-5 text-primary animate-spin" />;
       case "failed":
-        return <XCircle className="w-4 h-4 text-destructive" />;
+        return <XCircle className="w-5 h-5 text-red-500" />;
       default:
-        return <Clock className="w-4 h-4 text-muted-foreground" />;
-    }
-  };
-
-  const getStatusText = () => {
-    switch (status) {
-      case "completed":
-        return "Completed";
-      case "running":
-        return "Running";
-      case "failed":
-        return "Failed";
-      default:
-        return "Pending";
+        return <Circle className="w-5 h-5 text-muted-foreground" />;
     }
   };
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-secondary/30 hover:bg-secondary/50 transition-colors">
+    <Card
+      className={`
+        p-4 transition-all duration-300
+        ${
+          status === "pending"
+            ? "border-border bg-card/50"
+            : status === "running"
+            ? "border-primary/50 bg-primary/5 shadow-glow"
+            : status === "success" || status === "completed"
+            ? "border-green-500/50 bg-green-500/5"
+            : "border-red-500/50 bg-red-500/5"
+        }
+      `}
+    >
       <div className="flex items-center gap-3">
-        {getIcon()}
-        <span className="font-medium text-sm">{step}</span>
-      </div>
-      <span className="text-xs text-muted-foreground">{getStatusText()}</span>
-    </div>
-  );
-};
-
-interface BuildProgressProps {
-  steps: Array<{ name: string; status: "completed" | "running" | "pending" | "failed" }>;
-  progress: number;
-}
-
-export const BuildProgress = ({ steps, progress }: BuildProgressProps) => {
-  return (
-    <Card className="p-6 border-border bg-card">
-      <div className="space-y-4">
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="font-semibold">Build Progress</h3>
-            <span className="text-sm text-muted-foreground">{progress}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-        </div>
-        
-        <div className="space-y-2">
-          {steps.map((step, idx) => (
-            <BuildStatusCard key={idx} step={step.name} status={step.status} />
-          ))}
+        <div className="shrink-0">{getIcon()}</div>
+        <div className="flex-1 min-w-0">
+          <h4 className="font-medium text-sm">{displayTitle}</h4>
+          {message && (
+            <p className="text-xs text-muted-foreground mt-1">{message}</p>
+          )}
         </div>
       </div>
     </Card>

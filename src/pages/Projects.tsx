@@ -88,6 +88,41 @@ const Projects = () => {
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
       
       <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto w-full">
+        {/* Hero Section */}
+        <div className="text-center mb-12 relative">
+          <div className="absolute inset-0 bg-gradient-primary opacity-10 blur-3xl animate-glow-pulse" />
+          <div className="relative z-10">
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <Rocket className="w-12 h-12 text-primary animate-float" />
+              <h1 className="text-4xl md:text-5xl font-bold gradient-text">
+                K1W1 Builder
+              </h1>
+            </div>
+            <p className="text-lg text-muted-foreground mb-6 max-w-2xl mx-auto">
+              Von Prompt zu APK in Sekunden. Deine Idee, deine App, automatisch erstellt.
+            </p>
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              <Button
+                onClick={() => navigate("/builder")}
+                size="lg"
+                className="shadow-neon gap-2"
+              >
+                <Sparkles className="w-5 h-5" />
+                Neuer Build
+              </Button>
+              <Button
+                onClick={() => navigate("/chat")}
+                size="lg"
+                variant="outline"
+                className="gap-2"
+              >
+                <MessageSquare className="w-5 h-5" />
+                Classic Chat
+              </Button>
+            </div>
+          </div>
+        </div>
+
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl md:text-4xl font-bold mb-2">Meine Projekte</h1>

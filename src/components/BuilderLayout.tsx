@@ -3,6 +3,9 @@ import { MessageSquare, Code, Eye, Settings2, History, Rocket } from "lucide-rea
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SettingsDialog } from "./SettingsDialog";
+import { PreviewPanel } from "./PreviewPanel";
+import { CodeViewer } from "./CodeViewer";
+import { BuildHistory } from "./BuildHistory";
 
 interface BuilderLayoutProps {
   children: React.ReactNode;
@@ -77,20 +80,14 @@ export const BuilderLayout = ({ children }: BuilderLayoutProps) => {
             <TabsContent value="chat" className="h-full m-0">
               {children}
             </TabsContent>
-            <TabsContent value="preview" className="h-full m-0 p-4">
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Build-Vorschau wird hier angezeigt
-              </div>
+            <TabsContent value="preview" className="h-full m-0">
+              <PreviewPanel />
             </TabsContent>
-            <TabsContent value="code" className="h-full m-0 p-4">
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Generierter Code wird hier angezeigt
-              </div>
+            <TabsContent value="code" className="h-full m-0">
+              <CodeViewer />
             </TabsContent>
-            <TabsContent value="history" className="h-full m-0 p-4">
-              <div className="h-full flex items-center justify-center text-muted-foreground">
-                Build-Historie wird hier angezeigt
-              </div>
+            <TabsContent value="history" className="h-full m-0">
+              <BuildHistory />
             </TabsContent>
           </div>
         </Tabs>
