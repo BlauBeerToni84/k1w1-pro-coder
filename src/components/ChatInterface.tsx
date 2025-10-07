@@ -42,37 +42,36 @@ export const ChatInterface = () => {
     <div className="h-full flex flex-col">
       <ScrollArea className="flex-1 p-4">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center gap-4 max-w-2xl mx-auto">
+          <div className="h-full flex flex-col items-center justify-center text-center gap-3 px-4 max-w-2xl mx-auto">
             <div className="relative">
-              <Sparkles className="w-16 h-16 text-primary animate-float" />
+              <Sparkles className="w-12 h-12 sm:w-16 sm:h-16 text-primary animate-float" />
               <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full animate-pulse" />
             </div>
-            <h2 className="text-3xl font-bold gradient-text">
+            <h2 className="text-2xl sm:text-3xl font-bold gradient-text">
               Erstelle deine App mit KI
             </h2>
-            <p className="text-muted-foreground text-lg">
-              Beschreibe einfach deine App-Idee und ich generiere den kompletten Code, 
-              committe ihn zu GitHub und starte automatisch den Build-Prozess.
+            <p className="text-muted-foreground text-sm sm:text-base">
+              Beschreibe deine App-Idee → KI generiert Code → Commit zu GitHub → APK Build
             </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full mt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 w-full mt-4">
               <Button
                 variant="outline"
-                className="h-auto p-4 flex flex-col items-start gap-2 hover:bg-secondary"
-                onClick={() => setPrompt("Erstelle eine Todo-App mit React Native")}
+                className="h-auto p-3 flex flex-col items-start gap-1 hover:bg-secondary text-left"
+                onClick={() => setPrompt("Erstelle eine Todo-App mit React Native und Supabase")}
               >
-                <span className="font-semibold">📝 Todo-App</span>
-                <span className="text-xs text-muted-foreground text-left">
-                  Einfache Aufgabenverwaltung mit lokaler Speicherung
+                <span className="font-semibold text-sm">📝 Todo-App</span>
+                <span className="text-xs text-muted-foreground">
+                  Aufgabenverwaltung mit Cloud-Sync
                 </span>
               </Button>
               <Button
                 variant="outline"
-                className="h-auto p-4 flex flex-col items-start gap-2 hover:bg-secondary"
-                onClick={() => setPrompt("Erstelle eine Chat-App mit Firebase")}
+                className="h-auto p-3 flex flex-col items-start gap-1 hover:bg-secondary text-left"
+                onClick={() => setPrompt("Erstelle eine Chat-App mit Echtzeit-Messaging")}
               >
-                <span className="font-semibold">💬 Chat-App</span>
-                <span className="text-xs text-muted-foreground text-left">
-                  Echtzeit-Messaging mit Firebase Backend
+                <span className="font-semibold text-sm">💬 Chat-App</span>
+                <span className="text-xs text-muted-foreground">
+                  Echtzeit-Messaging mit Supabase
                 </span>
               </Button>
             </div>
@@ -123,13 +122,13 @@ export const ChatInterface = () => {
         )}
       </ScrollArea>
 
-      <div className="border-t border-border p-4 bg-card">
+      <div className="border-t border-border p-3 sm:p-4 bg-card">
         <div className="max-w-3xl mx-auto flex gap-2">
           <Textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Beschreibe deine App-Idee..."
-            className="min-h-[60px] max-h-[200px] resize-none bg-secondary border-border"
+            className="min-h-[50px] sm:min-h-[60px] max-h-[150px] resize-none bg-secondary border-border text-sm"
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -140,13 +139,12 @@ export const ChatInterface = () => {
           <Button
             onClick={handleGenerate}
             disabled={isGenerating || !prompt.trim()}
-            className="bg-primary hover:bg-primary/90 gap-2"
-            size="lg"
+            className="bg-primary hover:bg-primary/90 gap-2 h-auto px-3 sm:px-4"
           >
             {isGenerating ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
             ) : (
-              <Send className="w-5 h-5" />
+              <Send className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </Button>
         </div>
