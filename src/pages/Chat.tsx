@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { LiveProgress } from "@/components/LiveProgress";
 import { PreviewPanel } from "@/components/PreviewPanel";
 
@@ -78,7 +78,13 @@ const Chat = () => {
     }
   };
 
-  const CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat`;
+  // Helper to strip quotes from env vars
+  const stripQuotes = (str: string | undefined): string => {
+    if (!str) return 'https://rmqknehekpssknhrjbsu.supabase.co';
+    return str.replace(/^["']|["']$/g, '');
+  };
+
+  const CHAT_URL = `${stripQuotes(import.meta.env.VITE_SUPABASE_URL)}/functions/v1/chat`;
 
   const streamChat = async ({
     messages,
